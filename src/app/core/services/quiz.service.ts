@@ -656,59 +656,69 @@ export class QuizService {
 
   // ---------------- STUDENT METHODS ----------------
 
-  /** Student ka batch ID nikalta hai students table se */
+  /** Logged-in student ke batch IDs (students.user_id = auth user, students.batch_id = batch). */
   private async getMyBatchIds(): Promise<number[]> {
-    const { data: auth, error: authError } = await this.supabase.client.auth.getUser();
+    const { data: auth, error: authError } =
+      await this.supabase.client.auth.getUser();
 
-    if (authError) throw authError;
+    if (authError) throw new Error(authError.message);
     if (!auth.user) return [];
 
     const { data, error } = await this.supabase.client
       .from('students')
-      .select('*')
-      .eq('user_id', auth.user.id);
+      .select('batch_id')
+      .eq('user_id', auth.user.id)
+      .not('batch_id', 'is', null);
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 
-    const batchIds: number[] = [];
-    for (const row of data ?? []) {
-      const batchId = row['batch_id'] ?? row['course_batch_id'] ?? row['batchId'];
-      if (batchId && !isNaN(Number(batchId))) {
-        batchIds.push(Number(batchId));
-      }
-    }
-
-    return batchIds;
+    return (data ?? [])
+      .map((row) => Number(row.batch_id))
+      .filter((id) => Number.isInteger(id) && id > 0);
   }
 
-  /** Student ke liye published quizzes */
+  /**
+   * Student ke liye published quizzes:
+   *  - jo us ke batch ke liye bane hain (quizzes.batch_id = student ka batch), AUR
+   *  - jo poore course ke liye bane hain (quizzes.batch_id khali, course_id = student ke batch ka course).
+   * Draft aur closed quizzes nahi aate.
+   */
   async getQuizzesForStudent(): Promise<QuizRecord[]> {
     const batchIds = await this.getMyBatchIds();
     if (batchIds.length === 0) return [];
 
-    // Try both batch_id and course_batch_id
-    const queries = [
+    const { data: batches, error: batchError } = await this.withTimeout(
       this.supabase.client
-        .from('quizzes')
-        .select('*')
-        .in('batch_id', batchIds)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false }),
-      this.supabase.client
-        .from('quizzes')
-        .select('*')
-        .in('course_batch_id', batchIds)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-    ];
+        .from('course_batches')
+        .select('course_id')
+        .in('id', batchIds),
+    );
 
-    for (const query of queries) {
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        return data as QuizRecord[];
-      }
+    if (batchError) throw new Error(batchError.message);
+
+    const courseIds = [
+      ...new Set((batches ?? []).map((row) => Number(row.course_id))),
+    ].filter((id) => Number.isInteger(id) && id > 0);
+
+    const filters = [`batch_id.in.(${batchIds.join(',')})`];
+
+    if (courseIds.length) {
+      filters.push(
+        `and(batch_id.is.null,course_id.in.(${courseIds.join(',')}))`,
+      );
     }
 
-    return [];
+    const { data, error } = await this.withTimeout(
+      this.supabase.client
+        .from('quizzes')
+        .select('*')
+        .eq('status', 'published')
+        .or(filters.join(','))
+        .order('created_at', { ascending: false }),
+    );
+
+    if (error) throw new Error(error.message);
+
+    return (data ?? []) as QuizRecord[];
   }
 }

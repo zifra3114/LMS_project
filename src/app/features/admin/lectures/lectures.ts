@@ -1,3 +1,4 @@
+
 import {
   Component,
   ElementRef,
@@ -48,133 +49,308 @@ type StatusFilter = 'All' | LectureStatus;
         </button>
       </div>
 
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="Search lectures by title…"
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
-          class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-        />
+      <!-- Overview cards -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm font-medium text-slate-500">Total lectures</p>
+          <p class="mt-2 text-2xl font-bold text-slate-900">{{ lectures().length }}</p>
+          <p class="mt-1 text-xs text-slate-400">All uploaded lecture records</p>
+        </div>
 
-        <select
-          [ngModel]="batchFilter()"
-          (ngModelChange)="batchFilter.set(+$event)"
-          class="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option [ngValue]="0">All Batches</option>
-          @for (b of batches(); track b.id) {
-            <option [ngValue]="b.id">{{ batchLabel(b.id) }}</option>
-          }
-        </select>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm font-medium text-slate-500">Published</p>
+          <p class="mt-2 text-2xl font-bold text-emerald-600">{{ countStatus('Published') }}</p>
+          <p class="mt-1 text-xs text-slate-400">Visible to students</p>
+        </div>
 
-        <select
-          [ngModel]="statusFilter()"
-          (ngModelChange)="statusFilter.set($event)"
-          class="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="All">All Status</option>
-          <option value="Published">Published</option>
-          <option value="Drafted">Drafted</option>
-        </select>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm font-medium text-slate-500">Drafted</p>
+          <p class="mt-2 text-2xl font-bold text-amber-600">{{ countStatus('Drafted') }}</p>
+          <p class="mt-1 text-xs text-slate-400">Not visible to students</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm font-medium text-slate-500">Videos ready</p>
+          <p class="mt-2 text-2xl font-bold text-blue-600">{{ countProcessing('Ready') }}</p>
+          <p class="mt-1 text-xs text-slate-400">Ready to play in admin preview</p>
+        </div>
       </div>
 
-      <!-- Table -->
-      <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th class="px-4 py-3">Lecture</th>
-              <th class="px-4 py-3">Batch</th>
-              <th class="px-4 py-3">Duration</th>
-              <th class="px-4 py-3">Video</th>
-              <th class="px-4 py-3">Visibility</th>
-              <th class="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            @if (loading()) {
-              <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading lectures…</td></tr>
-            } @else if (filtered().length === 0) {
-              <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No lectures found.</td></tr>
-            } @else {
-              @for (l of filtered(); track l.id) {
-                <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3 font-medium text-slate-800">{{ l.title }}</td>
-                  <td class="px-4 py-3 text-slate-600">
-                    {{ l.course_batches?.courses?.title }} · {{ l.course_batches?.batch_name }}
-                  </td>
-                  <td class="px-4 py-3 text-slate-600">{{ duration(l.duration_minutes) }}</td>
-                  <td class="px-4 py-3">
-                    @if (uploads()[l.id]; as u) {
-                      <div class="w-44 space-y-1">
-                        <div class="flex items-center justify-between text-xs text-slate-600">
-                          <span>Uploading {{ percent(u) }}%</span>
-                          <button
-                            type="button"
-                            (click)="cancelUpload(l.id)"
-                            class="font-semibold text-red-600 hover:underline"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                        <div class="h-2 overflow-hidden rounded-full bg-slate-200">
-                          <div class="h-full bg-blue-600 transition-all" [style.width.%]="percent(u)"></div>
-                        </div>
-                        <p class="text-xs text-slate-500">
-                          {{ bytes(u.sent) }} / {{ bytes(u.total) }}
-                          @if (speedText(l.id); as sp) { · {{ sp }} }
-                        </p>
-                      </div>
-                    } @else {
-                      @switch (l.processing_status) {
-                        @case ('Ready') {
-                          <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Ready</span>
-                        }
-                        @case ('Processing') {
-                          <div class="w-36 space-y-1">
-                            <p class="text-xs font-semibold text-amber-700">Processing {{ l.processing_progress }}%</p>
-                            <div class="h-2 overflow-hidden rounded-full bg-slate-200">
-                              <div class="h-full bg-amber-500 transition-all" [style.width.%]="l.processing_progress"></div>
-                            </div>
-                          </div>
-                        }
-                        @case ('Failed') {
-                          <div class="space-y-1">
-                            <span
-                              class="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700"
-                              [title]="l.processing_error ?? ''"
-                            >
-                              Failed
-                            </span>
-                            @if (l.processing_error) {
-                              <p class="max-w-56 text-xs text-red-600">{{ l.processing_error }}</p>
-                            }
-                          </div>
-                        }
-                        @case ('Uploading') {
-                          <div class="space-y-1">
-                            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Upload incomplete</span>
-                            <p class="text-xs text-slate-500">Use the upload button to resume with the same file.</p>
-                          </div>
-                        }
-                        @default {
-                          <div class="space-y-1">
-                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">No video</span>
-                          </div>
-                        }
-                      }
+      <!-- Filters and view switch -->
+      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div class="flex flex-wrap items-center gap-5 border-b border-slate-100 xl:border-0">
+            <button
+              type="button"
+              (click)="statusFilter.set('All')"
+              class="border-b-2 px-1 pb-3 text-sm font-semibold xl:pb-1"
+              [class.border-blue-600]="statusFilter() === 'All'"
+              [class.text-blue-700]="statusFilter() === 'All'"
+              [class.border-transparent]="statusFilter() !== 'All'"
+              [class.text-slate-500]="statusFilter() !== 'All'"
+            >
+              All Lectures
+              <span class="ml-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs">
+                {{ lectures().length }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              (click)="statusFilter.set('Published')"
+              class="border-b-2 px-1 pb-3 text-sm font-semibold xl:pb-1"
+              [class.border-blue-600]="statusFilter() === 'Published'"
+              [class.text-blue-700]="statusFilter() === 'Published'"
+              [class.border-transparent]="statusFilter() !== 'Published'"
+              [class.text-slate-500]="statusFilter() !== 'Published'"
+            >
+              Published
+              <span class="ml-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                {{ countStatus('Published') }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              (click)="statusFilter.set('Drafted')"
+              class="border-b-2 px-1 pb-3 text-sm font-semibold xl:pb-1"
+              [class.border-blue-600]="statusFilter() === 'Drafted'"
+              [class.text-blue-700]="statusFilter() === 'Drafted'"
+              [class.border-transparent]="statusFilter() !== 'Drafted'"
+              [class.text-slate-500]="statusFilter() !== 'Drafted'"
+            >
+              Drafted
+              <span class="ml-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                {{ countStatus('Drafted') }}
+              </span>
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Search lectures by title…"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+              class="min-w-48 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <select
+              [ngModel]="batchFilter()"
+              (ngModelChange)="batchFilter.set(+$event)"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            >
+              <option [ngValue]="0">All Batches</option>
+              @for (b of batches(); track b.id) {
+                <option [ngValue]="b.id">{{ batchLabel(b.id) }}</option>
+              }
+            </select>
+
+            <div class="flex rounded-lg border border-slate-200 p-1">
+              <button
+                type="button"
+                (click)="viewMode.set('grid')"
+                aria-label="Grid view"
+                class="rounded-md p-2"
+                [class.bg-blue-600]="viewMode() === 'grid'"
+                [class.text-white]="viewMode() === 'grid'"
+                [class.text-slate-500]="viewMode() !== 'grid'"
+                title="Grid view"
+              >
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                (click)="viewMode.set('list')"
+                aria-label="List view"
+                class="rounded-md p-2"
+                [class.bg-blue-600]="viewMode() === 'list'"
+                [class.text-white]="viewMode() === 'list'"
+                [class.text-slate-500]="viewMode() !== 'list'"
+                title="List view"
+              >
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8 6h13M8 12h13M8 18h13"/>
+                  <path d="M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <div class="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+          Loading lectures…
+        </div>
+      } @else if (filtered().length === 0) {
+        <div class="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <p class="font-semibold text-slate-700">No lectures found</p>
+          <p class="mt-1 text-sm text-slate-500">Try another search or status filter.</p>
+        </div>
+      } @else if (viewMode() === 'grid') {
+        <!-- Grid / Card view: video remains here -->
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          @for (l of filtered(); track l.id) {
+            <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div class="relative flex aspect-video items-center justify-center overflow-hidden bg-slate-950">
+                @if (l.processing_status === 'Ready' && !uploads()[l.id]) {
+                  <app-video-player [lectureId]="l.id" />
+                } @else if (uploads()[l.id]; as u) {
+                  <div class="w-full px-6 text-center text-white">
+                    <div class="mb-2 text-sm font-semibold">Uploading {{ percent(u) }}%</div>
+                    <div class="h-2 overflow-hidden rounded-full bg-white/20">
+                      <div class="h-full bg-blue-400" [style.width.%]="percent(u)"></div>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="cancelUpload(l.id)"
+                      class="mt-3 text-xs font-semibold text-red-200 underline"
+                    >
+                      Cancel upload
+                    </button>
+                  </div>
+                } @else {
+                  <div class="px-5 text-center text-white">
+                    <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl">▶</div>
+                    <p class="text-sm font-semibold">
+                      {{ l.processing_status === 'Processing'
+                        ? 'Video processing'
+                        : l.processing_status === 'Failed'
+                          ? 'Video processing failed'
+                          : 'Video not uploaded yet' }}
+                    </p>
+                    @if (l.processing_status === 'Processing') {
+                      <p class="mt-1 text-xs text-slate-300">{{ l.processing_progress }}% complete</p>
                     }
+                    @if (l.processing_error) {
+                      <p class="mt-1 text-xs text-red-200">{{ l.processing_error }}</p>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="space-y-4 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <h2 class="truncate text-base font-bold text-slate-900">{{ l.title }}</h2>
+                    <p class="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
+                      {{ l.description || 'No description added.' }}
+                    </p>
+                  </div>
+                  <span
+                    class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    [class.bg-emerald-50]="l.status === 'Published'"
+                    [class.text-emerald-700]="l.status === 'Published'"
+                    [class.bg-amber-50]="l.status !== 'Published'"
+                    [class.text-amber-700]="l.status !== 'Published'"
+                  >
+                    {{ l.status }}
+                  </span>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-100 pt-3 text-sm">
+                  <div class="flex justify-between gap-3">
+                    <span class="text-slate-500">Course / Batch</span>
+                    <span class="text-right font-medium text-slate-700">
+                      {{ l.course_batches?.courses?.title || 'Course' }} ·
+                      {{ l.course_batches?.batch_name || batchLabel(l.batch_id) }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Duration</span>
+                    <span class="font-medium text-slate-700">{{ duration(l.duration_minutes) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Video status</span>
+                    <span
+                      class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                      [class.bg-emerald-50]="l.processing_status === 'Ready'"
+                      [class.text-emerald-700]="l.processing_status === 'Ready'"
+                      [class.bg-amber-50]="l.processing_status !== 'Ready'"
+                      [class.text-amber-700]="l.processing_status !== 'Ready'"
+                    >
+                      {{ l.processing_status || 'No video' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    (click)="viewingId.set(l.id)"
+                    [disabled]="l.processing_status !== 'Ready'"
+                    class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    ▶ Open video
+                  </button>
+
+                  <app-action-buttons
+                    [showUpload]="true"
+                    [uploadLabel]="uploadLabel(l)"
+                    [uploadDisabled]="!!uploads()[l.id] || l.processing_status === 'Processing'"
+                    [deleteLoading]="deletingId() === l.id"
+                    (uploadClick)="pickFile(l.id)"
+                    (viewClick)="viewingId.set(l.id)"
+                    (editClick)="openEdit(l)"
+                    (deleteClick)="deleteTarget.set(l)"
+                  />
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <!-- List / Table view: Video column removed -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table class="min-w-[800px] w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Lecture</th>
+                <th class="px-4 py-3">Batch</th>
+                <th class="px-4 py-3">Duration</th>
+                <th class="px-4 py-3">Visibility</th>
+                <th class="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-slate-100">
+              @for (l of filtered(); track l.id) {
+                <tr class="align-top hover:bg-slate-50">
+                  <td class="max-w-xs px-4 py-3">
+                    <div class="font-semibold text-slate-800">{{ l.title }}</div>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">
+                      {{ l.description || 'No description added.' }}
+                    </p>
                   </td>
+
+                  <td class="px-4 py-3 text-slate-600">
+                    {{ l.course_batches?.courses?.title || 'Course' }} ·
+                    {{ l.course_batches?.batch_name || batchLabel(l.batch_id) }}
+                  </td>
+
+                  <td class="px-4 py-3 text-slate-600">
+                    {{ duration(l.duration_minutes) }}
+                  </td>
+
                   <td class="px-4 py-3">
                     <span
                       class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                      [class]="l.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                      [class.bg-emerald-50]="l.status === 'Published'"
+                      [class.text-emerald-700]="l.status === 'Published'"
+                      [class.bg-amber-50]="l.status !== 'Published'"
+                      [class.text-amber-700]="l.status !== 'Published'"
                     >
                       {{ l.status }}
                     </span>
                   </td>
+
                   <td class="px-4 py-3">
                     <app-action-buttons
                       [showUpload]="true"
@@ -189,13 +365,13 @@ type StatusFilter = 'All' | LectureStatus;
                   </td>
                 </tr>
               }
-            }
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
 
-    <!-- Resume / dobara upload ke liye chhupa hua file chooser -->
+    <!-- Hidden file chooser for upload / resume -->
     <input
       #resumeInput
       type="file"
@@ -262,9 +438,11 @@ type StatusFilter = 'All' | LectureStatus;
               (change)="onFormFile($event)"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-blue-700"
             />
+
             @if (file(); as chosen) {
               <p class="mt-1 text-xs text-slate-500">{{ chosen.name }} · {{ bytes(chosen.size) }}</p>
             }
+
             <p class="mt-1 text-xs text-slate-500">
               Videos of 2–4 hours are supported. Please keep this page open while uploading.
               The duration is detected automatically.
@@ -303,39 +481,121 @@ type StatusFilter = 'All' | LectureStatus;
       </div>
     }
 
-    <!-- Preview Modal -->
+    <!-- Admin lecture preview -->
     @if (viewing(); as v) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="w-full max-w-3xl space-y-4 rounded-2xl bg-white p-5 shadow-xl">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h2 class="text-lg font-bold text-slate-800">{{ v.title }}</h2>
-              <p class="text-xs text-slate-500">
-                {{ v.course_batches?.courses?.title }} · {{ v.course_batches?.batch_name }}
-                · {{ duration(v.duration_minutes) }}
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6"
+        (click)="viewingId.set(null)"
+      >
+        <section
+          class="my-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lecture preview"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Admin preview</p>
+              <h2 class="mt-1 break-words text-xl font-bold text-slate-900">{{ v.title }}</h2>
+              <p class="mt-1 text-sm text-slate-500">
+                {{ v.course_batches?.courses?.title || 'Course' }} ·
+                {{ v.course_batches?.batch_name || 'Batch' }} ·
+                {{ duration(v.duration_minutes) }}
               </p>
             </div>
+
             <button
               type="button"
               (click)="viewingId.set(null)"
-              class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              class="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
             >
-              Close
+              Close ✕
             </button>
-          </div>
+          </header>
 
-          @if (v.processing_status === 'Ready') {
-            <app-video-player [lectureId]="v.id" />
-          } @else {
-            <div class="flex aspect-video items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-500">
-              This video is not ready yet ({{ v.processing_status }}).
+          <div class="grid grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
+            <div class="min-w-0 bg-slate-950 p-3 sm:p-5">
+              @if (v.processing_status === 'Ready') {
+                <div class="overflow-hidden rounded-xl bg-black">
+                  <app-video-player [lectureId]="v.id" />
+                </div>
+              } @else {
+                <div class="flex aspect-video flex-col items-center justify-center rounded-xl border border-white/10 bg-slate-900 px-6 text-center text-white">
+                  <span class="mb-3 text-4xl">▶</span>
+                  <p class="font-semibold">Video is not ready to play</p>
+                  <p class="mt-2 text-sm text-slate-300">
+                    Current status: {{ v.processing_status }}
+                  </p>
+                  @if (v.processing_status === 'Failed' && v.processing_error) {
+                    <p class="mt-3 max-w-lg text-sm text-red-300">{{ v.processing_error }}</p>
+                  }
+                </div>
+              }
+
+              <p class="mt-3 text-xs text-slate-400">
+                Video preview is available here for administrators once processing is complete.
+              </p>
             </div>
-          }
 
-          @if (v.description) {
-            <p class="text-sm text-slate-600">{{ v.description }}</p>
-          }
-        </div>
+            <aside class="space-y-5 p-5 sm:p-6">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Lecture details</h3>
+                <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
+                  {{ v.description || 'No description has been added for this lecture.' }}
+                </p>
+              </div>
+
+              <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="text-sm text-slate-500">Visibility</span>
+                  <span
+                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    [class]="v.status === 'Published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'"
+                  >
+                    {{ v.status }}
+                  </span>
+                </div>
+
+                <div class="flex items-start justify-between gap-3">
+                  <span class="text-sm text-slate-500">Video processing</span>
+                  <span class="text-right text-sm font-semibold text-slate-800">{{ v.processing_status }}</span>
+                </div>
+
+                <div class="flex items-start justify-between gap-3">
+                  <span class="text-sm text-slate-500">Duration</span>
+                  <span class="text-sm font-semibold text-slate-800">{{ duration(v.duration_minutes) }}</span>
+                </div>
+
+                <div class="border-t border-slate-200 pt-3">
+                  <p class="text-xs font-medium text-slate-500">Course / batch</p>
+                  <p class="mt-1 break-words text-sm font-semibold text-slate-800">
+                    {{ v.course_batches?.courses?.title || 'Course' }}
+                  </p>
+                  <p class="mt-1 text-sm text-slate-600">{{ v.course_batches?.batch_name || 'Batch' }}</p>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  (click)="openEdit(v); viewingId.set(null)"
+                  class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Edit lecture
+                </button>
+
+                <button
+                  type="button"
+                  (click)="viewingId.set(null)"
+                  class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Done
+                </button>
+              </div>
+            </aside>
+          </div>
+        </section>
       </div>
     }
 
@@ -347,6 +607,7 @@ type StatusFilter = 'All' | LectureStatus;
           <p class="text-sm text-slate-600">
             “{{ d.title }}” and its video will be permanently deleted. This cannot be undone.
           </p>
+
           <div class="flex justify-end gap-3">
             <button
               type="button"
@@ -355,6 +616,7 @@ type StatusFilter = 'All' | LectureStatus;
             >
               Cancel
             </button>
+
             <button
               type="button"
               (click)="confirmDelete()"
@@ -384,12 +646,14 @@ export class Lectures implements OnInit, OnDestroy {
   readonly search = signal('');
   readonly batchFilter = signal(0);
   readonly statusFilter = signal<StatusFilter>('All');
+  readonly viewMode = signal<'grid' | 'list'>('grid');
 
   readonly modalOpen = signal(false);
   readonly editingId = signal<number | null>(null);
   readonly viewingId = signal<number | null>(null);
   readonly deleteTarget = signal<Lecture | null>(null);
   readonly file = signal<File | null>(null);
+
   form: LectureInput = this.emptyForm();
 
   /** Lectures whose video is uploading right now: lecture id -> progress. */
@@ -437,7 +701,7 @@ export class Lectures implements OnInit, OnDestroy {
     this.controllers.forEach((controller) => controller.abort());
   }
 
-  /** Upload chal rahi ho aur tab band karne lagein to browser pooch le. */
+  /** Warn before leaving while uploads are active. */
   @HostListener('window:beforeunload', ['$event'])
   warnBeforeLeaving(event: BeforeUnloadEvent): void {
     if (Object.keys(this.uploads()).length > 0) event.preventDefault();
@@ -445,12 +709,14 @@ export class Lectures implements OnInit, OnDestroy {
 
   async load(): Promise<void> {
     this.loading.set(true);
+
     try {
       const [lectures, batches, courses] = await Promise.all([
         this.lectureService.getAll(),
         this.courseService.getAllBatches(),
         this.courseService.getCourses(),
       ]);
+
       this.lectures.set(lectures);
       this.rememberStatuses(lectures);
       this.batches.set(batches);
@@ -462,14 +728,14 @@ export class Lectures implements OnInit, OnDestroy {
     }
   }
 
-  /** Bina "Loading..." dikhaye sirf lectures taza karta hai. */
+  /** Refresh lectures without showing the loading screen. */
   private async refresh(): Promise<void> {
     try {
       const lectures = await this.lectureService.getAll();
       this.announceStatusChanges(lectures);
       this.lectures.set(lectures);
     } catch {
-      // will retry on the next poll
+      // Retry on the next poll.
     }
   }
 
@@ -478,21 +744,31 @@ export class Lectures implements OnInit, OnDestroy {
     lectures.forEach((l) => this.lastStatus.set(l.id, l.processing_status));
   }
 
-  /** Toast when a video finishes (or fails) processing while the admin is on this page. */
+  /** Toast when a video finishes or fails processing. */
   private announceStatusChanges(lectures: Lecture[]): void {
     for (const l of lectures) {
       const before = this.lastStatus.get(l.id);
+
       if (before === 'Processing' && l.processing_status === 'Ready') {
         this.toast.success(`“${l.title}” is ready to watch.`, 'Video ready');
       } else if (before && before !== 'Failed' && l.processing_status === 'Failed') {
         this.toast.error(l.processing_error || 'The video could not be processed.', 'Processing failed');
       }
     }
+
     this.rememberStatuses(lectures);
   }
 
   duration(minutes: number): string {
     return formatDuration(minutes);
+  }
+
+  countStatus(status: LectureStatus): number {
+    return this.lectures().filter((lecture) => lecture.status === status).length;
+  }
+
+  countProcessing(status: string): number {
+    return this.lectures().filter((lecture) => lecture.processing_status === status).length;
   }
 
   bytes(value: number): string {
@@ -506,11 +782,15 @@ export class Lectures implements OnInit, OnDestroy {
   speedText(lectureId: number): string {
     const s = this.speeds()[lectureId];
     const u = this.uploads()[lectureId];
+
     if (!s || !u || s.bytesPerSecond <= 0) return '';
 
     const remaining = Math.max(0, u.total - u.sent) / s.bytesPerSecond;
     const mins = Math.ceil(remaining / 60);
-    const eta = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+    const eta = mins >= 60
+      ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+      : `${mins} min`;
+
     return `${formatBytes(s.bytesPerSecond)}/s · ${eta} left`;
   }
 
@@ -524,6 +804,7 @@ export class Lectures implements OnInit, OnDestroy {
   batchLabel(batchId: number): string {
     const batch = this.batches().find((b) => b.id === batchId);
     if (!batch) return 'Unknown batch';
+
     const course = this.courses().find((c) => c.id === batch.course_id);
     return `${course?.title ?? 'Course'} · ${batch.batch_name} (${batch.batch_code})`;
   }
@@ -534,7 +815,9 @@ export class Lectures implements OnInit, OnDestroy {
     this.editingId.set(null);
     this.form = this.emptyForm();
     this.file.set(null);
+
     if (this.batchFilter()) this.form.batch_id = this.batchFilter();
+
     this.modalOpen.set(true);
   }
 
@@ -546,6 +829,7 @@ export class Lectures implements OnInit, OnDestroy {
       description: l.description,
       status: l.status,
     };
+
     this.file.set(null);
     this.modalOpen.set(true);
   }
@@ -564,8 +848,9 @@ export class Lectures implements OnInit, OnDestroy {
     const editing = this.editingId();
 
     this.saving.set(true);
+
     try {
-      // Validate the file before creating the row, so a wrong file never leaves an empty lecture
+      // Validate before creating a lecture record.
       if (chosen) this.lectureService.validateFile(chosen);
       if (!editing && !chosen) throw new Error('Please choose a video file to upload.');
 
@@ -577,6 +862,7 @@ export class Lectures implements OnInit, OnDestroy {
       };
 
       let lectureId: number;
+
       if (editing) {
         await this.lectureService.update(editing, input);
         lectureId = editing;
@@ -599,7 +885,7 @@ export class Lectures implements OnInit, OnDestroy {
 
   // ---------- Upload ----------
 
-  /** Opens the file chooser from the table's upload button. */
+  /** Opens the file chooser from the upload button. */
   pickFile(lectureId: number): void {
     this.resumeTarget = lectureId;
     this.resumeInput?.nativeElement.click();
@@ -646,6 +932,7 @@ export class Lectures implements OnInit, OnDestroy {
         (progress) => this.setProgress(lectureId, progress),
         controller.signal,
       );
+
       this.toast.success(
         'Upload complete. The video is now being processed. Large videos can take a while.',
         'Upload complete',
@@ -664,16 +951,19 @@ export class Lectures implements OnInit, OnDestroy {
     } finally {
       this.silentAbort.delete(lectureId);
       this.controllers.delete(lectureId);
+
       this.uploads.update((current) => {
         const next = { ...current };
         delete next[lectureId];
         return next;
       });
+
       this.speeds.update((current) => {
         const next = { ...current };
         delete next[lectureId];
         return next;
       });
+
       await this.refresh();
     }
   }
@@ -683,18 +973,34 @@ export class Lectures implements OnInit, OnDestroy {
     const previous = this.speeds()[lectureId];
 
     if (!previous) {
-      this.speeds.update((c) => ({ ...c, [lectureId]: { bytesPerSecond: 0, at: now, sent: progress.sent } }));
-    } else if (now - previous.at >= 1000) {
-      const instant = ((progress.sent - previous.sent) / (now - previous.at)) * 1000;
-      // smooth the number so it does not jump around
-      const smoothed = previous.bytesPerSecond ? previous.bytesPerSecond * 0.7 + instant * 0.3 : instant;
       this.speeds.update((c) => ({
         ...c,
-        [lectureId]: { bytesPerSecond: Math.max(0, smoothed), at: now, sent: progress.sent },
+        [lectureId]: {
+          bytesPerSecond: 0,
+          at: now,
+          sent: progress.sent,
+        },
+      }));
+    } else if (now - previous.at >= 1000) {
+      const instant = ((progress.sent - previous.sent) / (now - previous.at)) * 1000;
+      const smoothed = previous.bytesPerSecond
+        ? previous.bytesPerSecond * 0.7 + instant * 0.3
+        : instant;
+
+      this.speeds.update((c) => ({
+        ...c,
+        [lectureId]: {
+          bytesPerSecond: Math.max(0, smoothed),
+          at: now,
+          sent: progress.sent,
+        },
       }));
     }
 
-    this.uploads.update((current) => ({ ...current, [lectureId]: progress }));
+    this.uploads.update((current) => ({
+      ...current,
+      [lectureId]: progress,
+    }));
   }
 
   // ---------- Delete ----------
@@ -711,8 +1017,10 @@ export class Lectures implements OnInit, OnDestroy {
     }
 
     this.deletingId.set(l.id);
+
     try {
       const { filesRemoved } = await this.lectureService.delete(l.id);
+
       if (this.viewingId() === l.id) this.viewingId.set(null);
 
       if (filesRemoved) {
@@ -723,6 +1031,7 @@ export class Lectures implements OnInit, OnDestroy {
           'Deleted with a warning',
         );
       }
+
       await this.load();
     } catch (e) {
       this.toast.error(this.message(e, 'Please try again.'), 'Unable to delete lecture');

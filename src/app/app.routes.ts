@@ -32,6 +32,8 @@ import { StudentLectures } from './features/students/lectures';
 // Student Components
 import { StudentLiveClasses } from './features/students/live-classes';
 import { StudentQuizzes } from './features/students/quizzes';
+import { TakeQuiz } from './features/students/quizzes/take-quiz';
+import { QuizResult } from './features/students/quizzes/quiz-result';
 import { StudentAssignments } from './features/students/assignments';
 import { StudentResults } from './features/students/results';
 
@@ -145,6 +147,16 @@ export const routes: Routes = [
         path: 'quizzes',
         component: StudentQuizzes,
         title: 'Quizzes | EduCore',
+      },
+      {
+        path: 'quizzes/:id/take',
+        component: TakeQuiz,
+        title: 'Take Quiz | EduCore',
+      },
+      {
+        path: 'quizzes/result/:attemptId',
+        component: QuizResult,
+        title: 'Quiz Result | EduCore',
       },
       {
         path: 'assignments',
