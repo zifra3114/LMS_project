@@ -168,13 +168,13 @@ const NAV: NavItem[] = [
     .dd-item.danger:hover { background: #fff1f2; color: #be123c; }
 
     .body { display: flex; align-items: flex-start; }
-    .sidebar { position: sticky; top: 68px; display: flex; flex-direction: column; gap: 18px; flex: 0 0 258px; width: 258px; height: calc(100dvh - 68px); padding: 20px 16px; background: #020617; color: #fff; overflow-y: auto; }
+    .sidebar { position: sticky; top: 68px; display: flex; flex-direction: column; gap: 18px; flex: 0 0 258px; width: 258px; height: calc(100dvh - 68px); padding: 20px 16px; background: #020617; color: #fff; }
     .course-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid #ffffff1a; border-radius: 15px; background: #ffffff0f; }
     .cc-label { color: #93c5fd; font-size: 8.5px; font-weight: 900; letter-spacing: .18em; }
     .course-card strong { font-size: 14px; line-height: 1.35; font-weight: 900; }
     .course-card small { color: #94a3b8; font-size: 11px; }
 
-    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav { display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; overflow-y: auto; min-height: 0; }
     .nav-link { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; border-radius: 12px; background: transparent; color: #cbd5e1; font-family: inherit; font-size: 12.5px; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; transition: background .18s ease, color .18s ease; }
     .nav-link svg { width: 18px; height: 18px; flex: 0 0 auto; }
     .nav-link:hover { background: #ffffff12; color: #fff; }

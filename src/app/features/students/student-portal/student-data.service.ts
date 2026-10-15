@@ -149,21 +149,39 @@ export class StudentDataService {
     if (!student) return [];
 
     const { data, error } = await this.supabase.client.from(table).select('*');
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error(`Error loading ${table}:`, error);
+      throw new Error(error.message);
+    }
 
     const rows = ((data ?? []) as Row[]).filter(row => {
       if (opts.own) {
-        const sid = pick(row, ['student_id']);
-        const uid = pick(row, ['user_id']);
+        // For student's own records (results, submissions)
+        const sid = pick(row, ['student_id', 'studentId']);
+        const uid = pick(row, ['user_id', 'userId']);
         if (sid && sid !== student.id && sid !== student.userId) return false;
         if (uid && uid !== student.userId && uid !== student.id) return false;
         return true;
       }
-      const rowBatch = pick(row, ['batch_id', 'course_batch_id']);
-      const rowCourse = pick(row, ['course_id']);
-      if (rowBatch && student.batchId && rowBatch !== student.batchId) return false;
-      if (rowCourse && student.courseId && rowCourse !== student.courseId) return false;
-      return true;
+
+      // For course/batch content (lectures, quizzes, assignments, etc.)
+      const rowBatch = pick(row, ['batch_id', 'course_batch_id', 'batchId']);
+      const rowCourse = pick(row, ['course_id', 'courseId']);
+
+      // If row has batch, match with student's batch
+      if (rowBatch && student.batchId) {
+        if (rowBatch === student.batchId) return true;
+      }
+
+      // If row has course, match with student's course
+      if (rowCourse && student.courseId) {
+        if (rowCourse === student.courseId) return true;
+      }
+
+      // If no batch/course specified, include it (global announcements, etc.)
+      if (!rowBatch && !rowCourse) return true;
+
+      return false;
     });
 
     return rows.sort((a, b) => pick(b, DATE_KEYS).localeCompare(pick(a, DATE_KEYS)));

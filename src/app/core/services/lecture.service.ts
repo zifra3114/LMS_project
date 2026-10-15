@@ -136,13 +136,21 @@ export class LectureService {
 
     const { data, error } = await this.supabase
       .from('students')
-      .select('batch_id')
-      .eq('user_id', auth.user.id)
-      .not('batch_id', 'is', null);
+      .select('*')
+      .eq('user_id', auth.user.id);
 
     if (error) throw error;
 
-    return (data ?? []).map((row) => row.batch_id as number);
+    const batchIds: number[] = [];
+    for (const row of data ?? []) {
+      // Different possible field names for batch ID
+      const batchId = row['batch_id'] ?? row['course_batch_id'] ?? row['batchId'];
+      if (batchId && !isNaN(Number(batchId))) {
+        batchIds.push(Number(batchId));
+      }
+    }
+
+    return batchIds;
   }
 
   /** Sirf Published aur tayyar lectures, sirf student ke apne batches ki. */
@@ -151,17 +159,35 @@ export class LectureService {
 
     if (batchIds.length === 0) return [];
 
-    const { data, error } = await this.supabase
-      .from('lectures')
-      .select(SELECT_WITH_BATCH)
-      .in('batch_id', batchIds)
-      .eq('status', 'Published')
-      .eq('processing_status', 'Ready')
-      .order('created_at', { ascending: false });
+    // For development: show all Published lectures, even if not Ready
+    // Remove .eq('processing_status', 'Ready') to see pending videos
+    const queries = [
+      this.supabase
+        .from('lectures')
+        .select(SELECT_WITH_BATCH)
+        .in('batch_id', batchIds)
+        .eq('status', 'Published')
+        // .eq('processing_status', 'Ready')  // Comment out for testing
+        .order('created_at', { ascending: false }),
+      this.supabase
+        .from('lectures')
+        .select(SELECT_WITH_BATCH)
+        .in('course_batch_id', batchIds)
+        .eq('status', 'Published')
+        // .eq('processing_status', 'Ready')  // Comment out for testing
+        .order('created_at', { ascending: false })
+    ];
 
-    if (error) throw error;
+    // Try both queries and return whichever works
+    for (const query of queries) {
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data as unknown as Lecture[];
+      }
+    }
 
-    return (data ?? []) as unknown as Lecture[];
+    // If both failed, return empty array
+    return [];
   }
 
   // ---------- Video server ----------

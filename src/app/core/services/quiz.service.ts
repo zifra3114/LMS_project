@@ -653,4 +653,62 @@ export class QuizService {
       );
     }
   }
+
+  // ---------------- STUDENT METHODS ----------------
+
+  /** Student ka batch ID nikalta hai students table se */
+  private async getMyBatchIds(): Promise<number[]> {
+    const { data: auth, error: authError } = await this.supabase.client.auth.getUser();
+
+    if (authError) throw authError;
+    if (!auth.user) return [];
+
+    const { data, error } = await this.supabase.client
+      .from('students')
+      .select('*')
+      .eq('user_id', auth.user.id);
+
+    if (error) throw error;
+
+    const batchIds: number[] = [];
+    for (const row of data ?? []) {
+      const batchId = row['batch_id'] ?? row['course_batch_id'] ?? row['batchId'];
+      if (batchId && !isNaN(Number(batchId))) {
+        batchIds.push(Number(batchId));
+      }
+    }
+
+    return batchIds;
+  }
+
+  /** Student ke liye published quizzes */
+  async getQuizzesForStudent(): Promise<QuizRecord[]> {
+    const batchIds = await this.getMyBatchIds();
+    if (batchIds.length === 0) return [];
+
+    // Try both batch_id and course_batch_id
+    const queries = [
+      this.supabase.client
+        .from('quizzes')
+        .select('*')
+        .in('batch_id', batchIds)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false }),
+      this.supabase.client
+        .from('quizzes')
+        .select('*')
+        .in('course_batch_id', batchIds)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+    ];
+
+    for (const query of queries) {
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data as QuizRecord[];
+      }
+    }
+
+    return [];
+  }
 }

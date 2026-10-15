@@ -29,6 +29,12 @@ import { LiveClasses } from './features/admin/liveclasses/live-classes';
 import { Lectures } from './features/admin/lectures/lectures';
 import { StudentLectures } from './features/students/lectures';
 
+// Student Components
+import { StudentLiveClasses } from './features/students/live-classes';
+import { StudentQuizzes } from './features/students/quizzes';
+import { StudentAssignments } from './features/students/assignments';
+import { StudentResults } from './features/students/results';
+
 // Quizzes
 import { QuizFormComponent } from './features/admin/quizzes/quiz-form';
 import { QuizzesComponent } from './features/admin/quizzes/quizzes.component';
@@ -132,48 +138,23 @@ export const routes: Routes = [
       },
       {
         path: 'live-classes',
-        component: StudentListPageComponent,
+        component: StudentLiveClasses,
         title: 'Live Classes | EduCore',
-        data: {
-          heading: 'Live Classes',
-          subtitle: 'Join your scheduled live sessions.',
-          table: STUDENT_TABLES.liveClasses,
-          empty: 'No live classes scheduled.',
-        },
       },
       {
         path: 'quizzes',
-        component: StudentListPageComponent,
+        component: StudentQuizzes,
         title: 'Quizzes | EduCore',
-        data: {
-          heading: 'Quizzes',
-          subtitle: 'Quizzes assigned to your batch.',
-          table: STUDENT_TABLES.quizzes,
-          empty: 'No quizzes available.',
-        },
       },
       {
         path: 'assignments',
-        component: StudentListPageComponent,
+        component: StudentAssignments,
         title: 'Assignments | EduCore',
-        data: {
-          heading: 'Assignments',
-          subtitle: 'Your assignments and due dates.',
-          table: STUDENT_TABLES.assignments,
-          empty: 'No assignments yet.',
-        },
       },
       {
         path: 'results',
-        component: StudentListPageComponent,
+        component: StudentResults,
         title: 'Results | EduCore',
-        data: {
-          heading: 'Results',
-          subtitle: 'Your quiz and assignment results.',
-          table: STUDENT_TABLES.results,
-          own: true,
-          empty: 'No results published yet.',
-        },
       },
     ],
   },

@@ -24,28 +24,32 @@ export interface NavItem {
     }
 
     <aside
-      class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col
+      class="admin-sidebar fixed inset-y-0 left-0 z-40
+             flex h-dvh w-64 flex-col overflow-hidden
              border-r border-white/10 bg-[#020617] text-white
-             transition-transform duration-200 lg:translate-x-0"
+             transition-transform duration-200 ease-in-out
+             lg:translate-x-0"
       [class.-translate-x-full]="!open()"
     >
-      <!-- Brand -->
+      <!-- Fixed Brand Header -->
       <div
-        class="flex h-16 shrink-0 items-center gap-3 border-b
-               border-white/10 px-5"
+        class="flex h-16 min-h-16 shrink-0 items-center gap-3
+               border-b border-white/10 px-5"
       >
         <div
-          class="flex h-10 w-10 items-center justify-center rounded-xl
-                 bg-[#1d4ed8] text-white shadow-lg shadow-blue-900/30"
+          class="flex h-10 w-10 shrink-0 items-center justify-center
+                 rounded-xl bg-[#1d4ed8] text-white
+                 shadow-lg shadow-blue-900/30"
         >
           <app-icon name="graduation-cap" [size]="22" />
         </div>
 
-        <div class="flex flex-col">
+        <div class="flex min-w-0 flex-col">
           <span class="text-lg font-extrabold tracking-tight text-white">
             EduCore
             <span class="font-medium text-blue-400">LMS</span>
           </span>
+
           <span
             class="text-[9px] font-bold uppercase tracking-[0.2em]
                    text-slate-400"
@@ -55,54 +59,40 @@ export interface NavItem {
         </div>
       </div>
 
-      <!-- Navigation Label -->
-      <div class="px-6 pb-2 pt-6">
-        <p
-          class="text-[10px] font-bold uppercase tracking-[0.18em]
-                 text-slate-500"
-        >
-          Main Menu
-        </p>
-      </div>
-
-      <!-- Navigation -->
-      <nav class="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        @for (item of items; track item.path) {
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            (click)="onNavigate()"
-            class="nav-link flex items-center gap-3 rounded-xl px-3.5 py-3
-                   text-sm font-medium text-slate-400
-                   transition-all duration-200
-                   hover:bg-white/[0.06] hover:text-white"
+      <!-- Navigation Area -->
+      <div class="sidebar-navigation min-h-0 flex-1">
+        <!-- Navigation Label -->
+        <div class="px-6 pb-2 pt-6">
+          <p
+            class="text-[10px] font-bold uppercase tracking-[0.18em]
+                   text-slate-500"
           >
-            <span class="nav-icon flex shrink-0 items-center justify-center">
-              <app-icon [name]="item.icon" [size]="19" />
-            </span>
-
-            <span>{{ item.label }}</span>
-          </a>
-        }
-      </nav>
-
-      <!-- Bottom Branding -->
-      <div class="shrink-0 border-t border-white/10 p-4">
-        <div
-          class="rounded-xl border border-white/[0.08]
-                 bg-white/[0.04] p-3"
-        >
-          <div class="flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full bg-blue-400"></span>
-            <span class="text-xs font-semibold text-slate-300">
-              EduCore Administration
-            </span>
-          </div>
-
-          <p class="mt-2 text-[10px] leading-relaxed text-slate-500">
-            Manage courses, students and learning activities.
+            Main Menu
           </p>
         </div>
+
+        <!-- Navigation Links -->
+        <nav class="space-y-1 px-3 pb-4">
+          @for (item of items; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              (click)="onNavigate()"
+              class="nav-link flex items-center gap-3 rounded-xl
+                     px-3.5 py-3 text-sm font-medium text-slate-400
+                     transition-all duration-200
+                     hover:bg-white/[0.06] hover:text-white"
+            >
+              <span
+                class="nav-icon flex shrink-0 items-center justify-center"
+              >
+                <app-icon [name]="item.icon" [size]="19" />
+              </span>
+
+              <span>{{ item.label }}</span>
+            </a>
+          }
+        </nav>
       </div>
     </aside>
   `,
@@ -113,6 +103,24 @@ export interface NavItem {
 
     .admin-sidebar {
       box-shadow: 8px 0 30px rgb(2 6 23 / 10%);
+    }
+
+    /*
+     * Navigation can scroll when required, but its scrollbar
+     * remains invisible. Header stays fixed.
+     */
+    .sidebar-navigation {
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      overscroll-behavior-y: contain;
+    }
+
+    .sidebar-navigation::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     .nav-link {
@@ -155,7 +163,18 @@ export interface NavItem {
 
     .nav-link:focus-visible {
       outline: 2px solid #60a5fa;
-      outline-offset: 2px;
+      outline-offset: -2px;
+    }
+
+    @media (max-height: 650px) {
+      .sidebar-navigation > div {
+        padding-top: 12px;
+      }
+
+      .nav-link {
+        padding-top: 9px;
+        padding-bottom: 9px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -178,10 +197,22 @@ export class SidebarComponent {
     { label: 'Lectures', path: '/admin/lectures', icon: 'book-open' },
     { label: 'Live Classes', path: '/admin/live-classes', icon: 'megaphone' },
     { label: 'Quizzes', path: '/admin/quizzes', icon: 'circle-help' },
-    { label: 'Assignments', path: '/admin/assignments', icon: 'clipboard-list' },
+    {
+      label: 'Assignments',
+      path: '/admin/assignments',
+      icon: 'clipboard-list',
+    },
     { label: 'Results', path: '/admin/results', icon: 'chart-column' },
-    { label: 'Announcements', path: '/admin/announcements', icon: 'megaphone' },
-    { label: 'Students', path: '/admin/students', icon: 'graduation-cap' },
+    {
+      label: 'Announcements',
+      path: '/admin/announcements',
+      icon: 'megaphone',
+    },
+    {
+      label: 'Students',
+      path: '/admin/students',
+      icon: 'graduation-cap',
+    },
     { label: 'Settings', path: '/admin/settings', icon: 'settings' },
   ];
 

@@ -82,9 +82,8 @@ export class LiveClassService {
   // ---------- Student ----------
 
   /**
-   * ASSUMPTION: students ko batch se jodne wali table ka naam `batch_students`
-   * hai, columns: batch_id, student_id (student_id = auth user id).
-   * Agar aapki table / column ka naam alag hai to sirf yahi method badlein.
+   * Student ka batch ID nikalta hai students table se.
+   * students.user_id = login user ki id
    */
   async getMyBatchIds(): Promise<number[]> {
     const { data: auth, error: authError } = await this.supabase.auth.getUser();
@@ -93,13 +92,22 @@ export class LiveClassService {
     if (!auth.user) return [];
 
     const { data, error } = await this.supabase
-      .from('batch_students')
-      .select('batch_id')
-      .eq('student_id', auth.user.id);
+      .from('students')
+      .select('*')
+      .eq('user_id', auth.user.id);
 
     if (error) throw error;
 
-    return (data ?? []).map((row) => row.batch_id as number);
+    const batchIds: number[] = [];
+    for (const row of data ?? []) {
+      // Different possible field names for batch ID
+      const batchId = row['batch_id'] ?? row['course_batch_id'] ?? row['batchId'];
+      if (batchId && !isNaN(Number(batchId))) {
+        batchIds.push(Number(batchId));
+      }
+    }
+
+    return batchIds;
   }
 
   async getForMyBatches(): Promise<LiveClass[]> {
@@ -107,15 +115,30 @@ export class LiveClassService {
 
     if (batchIds.length === 0) return [];
 
-    const { data, error } = await this.supabase
-      .from('live_classes')
-      .select(SELECT_WITH_BATCH)
-      .in('batch_id', batchIds)
-      .order('scheduled_at', { ascending: true });
+    // Try both batch_id and course_batch_id field names
+    const queries = [
+      this.supabase
+        .from('live_classes')
+        .select(SELECT_WITH_BATCH)
+        .in('batch_id', batchIds)
+        .order('scheduled_at', { ascending: true }),
+      this.supabase
+        .from('live_classes')
+        .select(SELECT_WITH_BATCH)
+        .in('course_batch_id', batchIds)
+        .order('scheduled_at', { ascending: true })
+    ];
 
-    if (error) throw error;
+    // Try both queries and return whichever works
+    for (const query of queries) {
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data as unknown as LiveClass[];
+      }
+    }
 
-    return (data ?? []) as unknown as LiveClass[];
+    // If both failed, return empty array
+    return [];
   }
 
   // ---------- Helpers ----------

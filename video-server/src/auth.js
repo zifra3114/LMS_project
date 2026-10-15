@@ -3,8 +3,7 @@ import crypto from 'node:crypto';
 // ---------- Playback token ----------
 // Student pehle Supabase login se token maangta hai (batch aur Published check ke baad).
 // Phir har playlist / segment request mein sirf yeh chhota token jata hai, jise
-// server bina database ke, sirf mohar (HMAC) se check kar leta hai. Isliye 4 ghante
-// ki lecture ki hazaaron segment requests par Supabase par load nahi parta.
+// server bina database ke, sirf mohar (HMAC) se check kar leta hai.
 
 const sign = (payload, secret) =>
   crypto.createHmac('sha256', secret).update(payload).digest();
@@ -48,6 +47,20 @@ export function verifyPlaybackToken(token, lectureId, secret, now = Date.now()) 
 
 export function createAuth({ db, config }) {
   const admins = new Set(config.adminEmails);
+  const adminCache = new Map(); // userId -> { value, expires }
+  const ADMIN_CACHE_MS = 60_000;
+
+  /** profiles.role = 'admin' (database se). ADMIN_EMAILS sirf optional extra hai. */
+  async function checkAdmin(user) {
+    if (user.email && admins.has(user.email.toLowerCase())) return true;
+
+    const cached = adminCache.get(user.id);
+    if (cached && cached.expires > Date.now()) return cached.value;
+
+    const value = (await db.isAdminUser?.(user.id)) === true;
+    adminCache.set(user.id, { value, expires: Date.now() + ADMIN_CACHE_MS });
+    return value;
+  }
 
   async function resolveUser(req) {
     const match = (req.headers.authorization || '').match(/^Bearer (.+)$/i);
@@ -59,7 +72,7 @@ export function createAuth({ db, config }) {
     return {
       id: user.id,
       email: user.email,
-      isAdmin: !!user.email && admins.has(user.email.toLowerCase()),
+      isAdmin: await checkAdmin(user),
     };
   }
 
