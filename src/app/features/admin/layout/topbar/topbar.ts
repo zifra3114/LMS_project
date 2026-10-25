@@ -74,8 +74,9 @@ export class TopbarComponent implements OnInit {
   }
 
   async logout(): Promise<void> {
+    this.menuOpen.set(false);
     await this.auth.logout();
     this.toast.info('You have been signed out.');
-    await this.router.navigateByUrl('/admin/login');
+    await this.router.navigateByUrl('/', { replaceUrl: true });
   }
 }

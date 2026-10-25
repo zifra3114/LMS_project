@@ -536,12 +536,13 @@ export class StudentLayoutComponent implements OnInit {
   }
 
   async logout(): Promise<void> {
-    try {
-      await this.supabase.client.auth.signOut();
-    } finally {
-      this.data.reset();
-      this.toast.success('You have been logged out.', 'Logged Out');
-      await this.router.navigateByUrl('/student-login');
-    }
+  try {
+    await this.supabase.client.auth.signOut();
+  } finally {
+    this.data.reset();
+    this.closeSidebar();
+    this.toast.success('You have been logged out.', 'Logged Out');
+    await this.router.navigateByUrl('/', { replaceUrl: true });
   }
+}
 }

@@ -1,6 +1,6 @@
-
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase.service';
 
 @Component({
@@ -56,9 +56,17 @@ import { SupabaseService } from '../../../core/services/supabase.service';
               </h2>
 
               <p class="mt-2 text-sm leading-6 text-slate-500">
-                Your password has been saved. Your account is ready for
-                sign-in through the appropriate teacher or student portal.
+                Your password has been saved. You can now sign in with your
+                email and the new password.
               </p>
+
+              <button
+                type="button"
+                (click)="goToLogin()"
+                class="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
+              >
+                Go to Login
+              </button>
 
               <p class="mt-5 rounded-xl border border-green-100 bg-green-50 p-3 text-xs leading-5 text-green-800">
                 Keep your password private and do not share it with anyone.
@@ -82,6 +90,10 @@ import { SupabaseService } from '../../../core/services/supabase.service';
                 This invitation link may be expired, already used or invalid.
                 Please ask your LMS administrator to send a new invitation.
               </p>
+
+              @if (errorMessage()) {
+                <p class="mt-3 text-xs text-red-600">{{ errorMessage() }}</p>
+              }
             </div>
           } @else {
             <div class="mb-6">
@@ -174,6 +186,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 })
 export class SetPasswordComponent implements OnInit {
   private readonly supabase = inject(SupabaseService).client;
+  private readonly router = inject(Router);
 
   readonly checking = signal(true);
   readonly hasSession = signal(false);
@@ -183,6 +196,9 @@ export class SetPasswordComponent implements OnInit {
 
   password = '';
   confirmPassword = '';
+
+  // Invite ke waqt jo role metadata mein gaya tha (teacher / student)
+  private role = '';
 
   async ngOnInit(): Promise<void> {
     try {
@@ -195,6 +211,8 @@ export class SetPasswordComponent implements OnInit {
       }
 
       this.hasSession.set(!!data.session);
+      this.role =
+        (data.session?.user.user_metadata?.['role'] as string | undefined) ?? '';
     } catch {
       this.errorMessage.set('Could not verify the invitation. Please try again.');
     } finally {
@@ -241,5 +259,12 @@ export class SetPasswordComponent implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  goToLogin(): void {
+    // Teacher portal abhi nahi hai, is liye teacher ko admin login par bheja ja raha hai.
+    this.router.navigateByUrl(
+      this.role === 'student' ? '/student-login' : '/admin/login',
+    );
   }
 }

@@ -174,22 +174,27 @@ interface CatalogItem {
       width: 100%;
       min-width: 0;
       color: #0f172a;
+      color-scheme: light;
     }
 
     * { box-sizing: border-box; }
 
+    /* Login page jaisa: white se light blue gradient */
     .register-page {
       width: 100%;
       min-height: 100dvh;
-      background: #f7f9fc;
+      background: linear-gradient(120deg, #ffffff 0%, #eef5fb 45%, #d6e6f4 100%);
     }
 
+    /* ================= DARK NAVBAR ================= */
     .topbar {
-      position: relative;
-      z-index: 10;
+      position: sticky;
+      top: 0;
+      z-index: 50;
       height: 76px;
-      background: rgba(255,255,255,.97);
-      border-bottom: 1px solid #e2e8f0;
+      background: #020617;
+      border-bottom: 1px solid rgb(255 255 255 / 10%);
+      box-shadow: 0 8px 24px rgb(15 23 42 / 18%);
     }
 
     .topbar-inner {
@@ -205,33 +210,35 @@ interface CatalogItem {
     .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; min-width: 0; }
     .brand-icon {
       display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto;
-      border-radius: 14px; background: #020617; color: white;
-      box-shadow: 0 5px 14px #cbd5e1;
+      border-radius: 14px; background: #2563eb; color: white;
+      box-shadow: 0 6px 18px rgb(37 99 235 / 35%);
     }
     .brand-icon svg { width: 22px; height: 22px; }
     .brand-copy { display: flex; flex-direction: column; gap: 3px; }
-    .brand-copy strong { font-size: 19px; line-height: 1; font-weight: 900; letter-spacing: -.04em; color: #020617; }
-    .brand-copy small { font-size: 8px; font-weight: 800; letter-spacing: .19em; color: #1d4ed8; white-space: nowrap; }
+    .brand-copy strong { font-size: 19px; line-height: 1; font-weight: 900; letter-spacing: -.04em; color: #ffffff; }
+    .brand-copy small { font-size: 8px; font-weight: 800; letter-spacing: .19em; color: #60a5fa; white-space: nowrap; }
     .home-link {
       display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px;
-      border: 1px solid #dbe3ee; border-radius: 11px; color: #334155;
+      border: 1px solid rgb(255 255 255 / 15%); border-radius: 11px; color: #cbd5e1;
+      background: rgb(255 255 255 / 5%);
       text-decoration: none; font-size: 11px; font-weight: 800; white-space: nowrap;
       transition: .2s ease;
     }
-    .home-link:hover { color: white; background: #020617; border-color: #020617; }
+    .home-link:hover { color: white; background: #2563eb; border-color: #2563eb; }
     .home-link svg { width: 15px; height: 15px; }
 
-    .workspace { position: relative; isolation: isolate; background: #f7f9fc; overflow: hidden; }
-    .ambient { position: absolute; z-index: -1; pointer-events: none; width: 340px; height: 340px; border-radius: 50%; filter: blur(70px); opacity: .6; }
-    .ambient-one { top: -120px; right: -100px; background: #dbeafe; }
-    .ambient-two { bottom: -120px; left: -100px; background: #e0e7ff; }
+    /* ================= WORKSPACE (LIGHT) ================= */
+    .workspace { position: relative; isolation: isolate; background: transparent; overflow: hidden; }
+    .ambient { position: absolute; z-index: -1; pointer-events: none; width: 360px; height: 360px; border-radius: 50%; filter: blur(80px); opacity: .55; }
+    .ambient-one { top: -120px; right: -100px; background: #bfdbfe; }
+    .ambient-two { bottom: -120px; left: -100px; background: #c7d2fe; }
     .workspace-inner { position: relative; width: min(100% - 40px, 1280px); margin: 0 auto; padding: 30px 0 18px; }
 
     .page-heading { text-align: center; margin: 0 auto 27px; }
     .admission-badge {
       display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px;
-      border: 1px solid #bfdbfe; border-radius: 999px; background: white; color: #1d4ed8;
-      box-shadow: 0 2px 5px #e2e8f0; font-size: 9px; font-weight: 900; letter-spacing: .19em;
+      border: 1px solid #bfdbfe; border-radius: 999px; background: #ffffff; color: #1d4ed8;
+      box-shadow: 0 2px 6px rgb(15 23 42 / 6%); font-size: 9px; font-weight: 900; letter-spacing: .19em;
     }
     .admission-badge i, .new-admission i { width: 6px; height: 6px; border-radius: 50%; background: #2563eb; }
     .page-heading h1 { margin: 15px 0 7px; font-size: clamp(30px, 3vw, 43px); line-height: 1.12; letter-spacing: -.055em; font-weight: 950; color: #020617; }
@@ -245,7 +252,9 @@ interface CatalogItem {
       align-items: start;
     }
     .side-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-    .guide-card { padding: 22px; border-radius: 17px; background: #020617; color: white; box-shadow: 0 12px 28px rgb(15 23 42 / 10%); }
+
+    /* ================= SIDE CARDS ================= */
+    .guide-card { padding: 22px; border-radius: 17px; background: #020617; color: white; box-shadow: 0 14px 30px rgb(15 23 42 / 18%); }
     .mini-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #ffffff20; border-radius: 12px; background: #ffffff12; color: #93c5fd; }
     .mini-icon svg { width: 19px; height: 19px; }
     .guide-card h2 { margin: 16px 0 5px; font-size: 15px; font-weight: 900; letter-spacing: -.02em; }
@@ -258,7 +267,7 @@ interface CatalogItem {
     .guide-step strong { display: block; padding-top: 2px; font-size: 11px; line-height: 1.4; }
     .guide-step small { display: block; margin-top: 4px; color: #94a3b8; font-size: 10px; line-height: 1.5; }
 
-    .info-card { padding: 18px; border: 1px solid #e2e8f0; border-radius: 16px; background: white; box-shadow: 0 2px 3px rgb(15 23 42 / 5%); min-width: 0; }
+    .info-card { padding: 18px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff; box-shadow: 0 6px 18px rgb(15 23 42 / 6%); min-width: 0; }
     .info-title { display: flex; align-items: center; gap: 10px; }
     .info-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; flex: 0 0 auto; }
     .info-icon svg { width: 21px; height: 21px; }
@@ -273,47 +282,53 @@ interface CatalogItem {
     .checklist-card li { position: relative; padding-left: 17px; color: #64748b; font-size: 10.5px; line-height: 1.55; }
     .checklist-card li::before { content: '✓'; position: absolute; left: 0; top: 0; color: #2563eb; font-weight: 900; }
 
-    .form-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 21px; background: white; box-shadow: 0 12px 32px rgb(15 23 42 / 8%); }
-    .form-card-header { position: relative; isolation: isolate; flex: 0 0 auto; overflow: hidden; padding: 22px 26px 23px; background: #020617; color: white; }
-    .header-decoration { position: absolute; z-index: -1; width: 150px; height: 150px; top: -80px; right: -5px; border: 25px solid rgb(37 99 235 / 14%); border-radius: 50%; }
-    .new-admission { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgb(96 165 250 / 20%); border-radius: 7px; background: rgb(37 99 235 / 10%); color: #bfdbfe; font-size: 8px; font-weight: 900; letter-spacing: .17em; }
-    .new-admission i { width: 5px; height: 5px; background: #60a5fa; }
-    .form-card-header h2 { margin: 13px 0 5px; font-size: clamp(21px, 2vw, 27px); line-height: 1.2; font-weight: 950; letter-spacing: -.04em; }
-    .form-card-header > p { margin: 0; color: #94a3b8; font-size: 10.5px; line-height: 1.7; }
-    .header-user-icon { position: absolute; top: 23px; right: 25px; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #ffffff1a; border-radius: 13px; background: #ffffff0b; color: #93c5fd; }
+    /* ================= FORM CARD (WHITE) ================= */
+    .form-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 24px; background: #ffffff; box-shadow: 0 20px 50px rgb(15 23 42 / 10%); }
+    .form-card-header { position: relative; isolation: isolate; flex: 0 0 auto; overflow: hidden; padding: 22px 26px 23px; background: #ffffff; border-bottom: 1px solid #eef2f7; color: #020617; }
+    .header-decoration { position: absolute; z-index: -1; width: 150px; height: 150px; top: -80px; right: -5px; border: 25px solid rgb(37 99 235 / 8%); border-radius: 50%; }
+    .new-admission { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid #bfdbfe; border-radius: 7px; background: #eff6ff; color: #1d4ed8; font-size: 8px; font-weight: 900; letter-spacing: .17em; }
+    .new-admission i { width: 5px; height: 5px; background: #2563eb; }
+    .form-card-header h2 { margin: 13px 0 5px; font-size: clamp(21px, 2vw, 27px); line-height: 1.2; font-weight: 950; letter-spacing: -.04em; color: #020617; }
+    .form-card-header > p { margin: 0; color: #64748b; font-size: 10.5px; line-height: 1.7; }
+    .header-user-icon { position: absolute; top: 23px; right: 25px; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e2e8f0; border-radius: 13px; background: #f8fafc; color: #2563eb; }
     .header-user-icon svg { width: 24px; height: 24px; }
 
-    .registration-form { display: flex; flex-direction: column; gap: 27px; min-width: 0; padding: 25px 26px 28px; }
+    .registration-form { display: flex; flex-direction: column; gap: 27px; min-width: 0; padding: 25px 26px 28px; background: #ffffff; }
     .form-section { display: flex; flex-direction: column; gap: 17px; min-width: 0; }
     .section-heading { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
     .section-heading > b { display: grid; place-items: center; width: 31px; height: 31px; flex: 0 0 31px; border-radius: 10px; background: #020617; color: white; font-size: 11px; }
     .section-heading h3 { margin: 0; color: #020617; font-size: 12px; font-weight: 900; }
     .section-heading p { margin: 4px 0 0; color: #94a3b8; font-size: 10px; }
     .field { min-width: 0; }
-    .field label { display: block; margin-bottom: 7px; color: #334155; font-size: 10.5px; font-weight: 800; }
+    .field label { display: block; margin-bottom: 7px; color: #0f172a; font-size: 10.5px; font-weight: 800; }
     .field label em { color: #2563eb; font-style: normal; }
     .optional { color: #94a3b8; font-weight: 500; }
     .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; min-width: 0; }
-    .form-input { display: block; width: 100%; min-width: 0; min-height: 42px; border: 1px solid #e2e8f0; border-radius: 11px; background: #f8fafc; padding: 0 12px; color: #0f172a; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.5; outline: none; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+
+    /* Login page jaise rounded white inputs */
+    .form-input { display: block; width: 100%; min-width: 0; min-height: 46px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff; padding: 0 14px; color: #0f172a; font-family: inherit; font-size: 11.5px; font-weight: 500; line-height: 1.5; outline: none; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
     .form-input::placeholder { color: #94a3b8; font-weight: 400; }
     .form-input:hover { border-color: #cbd5e1; }
-    .form-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgb(37 99 235 / 10%); }
-    .form-input:disabled { cursor: not-allowed; opacity: .55; }
+    .form-input:focus { border-color: #2563eb; background: #ffffff; box-shadow: 0 0 0 3px rgb(37 99 235 / 12%); }
+    .form-input:disabled { cursor: not-allowed; opacity: .55; background: #f8fafc; }
     select.form-input { cursor: pointer; }
-    .textarea { min-height: 84px; padding: 10px 12px; resize: vertical; }
+    .textarea { min-height: 90px; padding: 12px 14px; resize: vertical; }
+
     .field-hint { margin: 7px 0 0; font-size: 10px; }
     .error-hint { color: #e11d48; }
     .warning-hint { color: #d97706; }
-    .loading-note { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #dbeafe; border-radius: 11px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
+    .loading-note { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #dbeafe; border-radius: 12px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
     .spinner { display: inline-block; width: 17px; height: 17px; flex: 0 0 auto; border: 2px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
     .button-spinner { border-color: white; border-top-color: transparent; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .privacy-note { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+    .privacy-note { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
     .privacy-lock { color: #1d4ed8; font-size: 18px; line-height: 1.2; }
     .privacy-note strong { display: block; color: #334155; font-size: 10.5px; font-weight: 900; }
     .privacy-note p { margin: 5px 0 0; color: #64748b; font-size: 10px; line-height: 1.65; }
-    .submit-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; padding: 12px 18px; border: 0; border-radius: 11px; background: #1d4ed8; color: white; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 8px 18px rgb(37 99 235 / 18%); transition: background .2s ease, transform .2s ease; }
-    .submit-button:hover:not(:disabled) { background: #020617; }
+
+    /* Login page ke Sign In button jaisa */
+    .submit-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 50px; padding: 12px 18px; border: 0; border-radius: 14px; background: #0f172a; color: white; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 8px 18px rgb(15 23 42 / 18%); transition: background .2s ease, transform .2s ease; }
+    .submit-button:hover:not(:disabled) { background: #1d4ed8; }
     .submit-button:hover:not(:disabled) span:last-child { transform: translateX(3px); }
     .submit-button:active:not(:disabled) { transform: scale(.99); }
     .submit-button:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; }
@@ -331,13 +346,12 @@ interface CatalogItem {
       .guide-card { padding: 25px; }
       .info-card { padding: 21px; }
       .registration-form { padding: 30px 32px; }
-      .form-input { min-height: 46px; font-size: 12px; }
+      .form-input { min-height: 48px; font-size: 12px; }
       .field label { font-size: 11px; }
     }
 
-    /* Tablet and mobile: single column. Page scrolls naturally (no inner form scroll anywhere). */
+    /* Tablet and mobile: single column. */
     @media (max-width: 1023px) {
-      .topbar { position: sticky; top: 0; }
       .workspace-inner { width: min(100% - 40px, 760px); padding: 28px 0 20px; }
       .page-heading { margin-bottom: 25px; }
       .layout-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
@@ -365,7 +379,7 @@ interface CatalogItem {
       .page-heading h1 { font-size: clamp(28px, 8vw, 36px); }
       .page-heading > p { font-size: 12px; }
       .admission-badge { font-size: 8px; letter-spacing: .14em; }
-      .form-card { border-radius: 17px; }
+      .form-card { border-radius: 18px; }
       .form-card-header { padding: 20px 17px; }
       .form-card-header h2 { font-size: 22px; }
       .form-card-header > p { max-width: 85%; }
@@ -374,7 +388,7 @@ interface CatalogItem {
       .registration-form { padding: 20px 16px 22px; gap: 25px; }
       .form-section { gap: 15px; }
       .field-grid { grid-template-columns: minmax(0, 1fr); gap: 15px; }
-      .form-input { min-height: 46px; font-size: 13px; }
+      .form-input { min-height: 48px; font-size: 13px; }
       .textarea { min-height: 95px; }
       .guide-card { padding: 20px; }
       .info-card { padding: 17px; }

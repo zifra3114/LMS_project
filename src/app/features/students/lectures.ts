@@ -20,7 +20,7 @@ import { PAGE_STYLES } from './student-portal/student-portal.styles';
           <h1>Recorded Lectures</h1>
           <p>Watch your recorded lessons, revisit chapters, and learn at your own pace.</p>
         </div>
-
+a
         <div class="lecture-total">
           <span class="total-icon">
             <svg viewBox="0 0 24 24" fill="none"

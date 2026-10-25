@@ -1,12 +1,11 @@
-
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { InvitationService } from '../../../core/services/invitation.service';
 import type { InvitationRole } from '../../../core/services/invitation.service';
+import { Toast } from '../../../core/services/toast.service';
 
 type UserRole = 'Teacher' | 'Student';
-type NoticeType = 'success' | 'error' | 'warning';
 
 interface InviteForm {
   fullName: string;
@@ -238,25 +237,7 @@ interface InviteForm {
           </div>
         </section>
 
-        <!-- Important Notice -->
-        <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <circle cx="12" cy="12" r="9" />
-            <path stroke-linecap="round" d="M12 8v5M12 16h.01" />
-          </svg>
-          <div>
-            <p class="text-sm font-semibold text-amber-900">
-              Before sending invitations
-            </p>
-            <p class="mt-1 text-sm leading-5 text-amber-800">
-              The invite-user Supabase Edge Function must be deployed and
-              configured to verify the admin, assign the requested role,
-              and send the invitation email. Never put a Supabase secret
-              or service-role key in frontend code.
-            </p>
-          </div>
-        </div>
+        
 
       </div>
     </div>
@@ -352,24 +333,6 @@ interface InviteForm {
               </p>
             </div>
 
-            <!-- Success/Error Message -->
-            @if (notice()) {
-              <div
-                class="rounded-xl border p-3 text-sm leading-5"
-                [class.border-emerald-200]="noticeType() === 'success'"
-                [class.bg-emerald-50]="noticeType() === 'success'"
-                [class.text-emerald-800]="noticeType() === 'success'"
-                [class.border-rose-200]="noticeType() === 'error'"
-                [class.bg-rose-50]="noticeType() === 'error'"
-                [class.text-rose-800]="noticeType() === 'error'"
-                [class.border-amber-200]="noticeType() === 'warning'"
-                [class.bg-amber-50]="noticeType() === 'warning'"
-                [class.text-amber-800]="noticeType() === 'warning'"
-              >
-                {{ notice() }}
-              </div>
-            }
-
             <!-- Actions -->
             <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
               <button
@@ -383,7 +346,7 @@ interface InviteForm {
 
               <button
                 type="submit"
-                [disabled]="inviteNgForm.invalid || sending() || invitationSent()"
+                [disabled]="inviteNgForm.invalid || sending()"
                 class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 @if (sending()) {
@@ -393,8 +356,6 @@ interface InviteForm {
                     <path stroke-linecap="round" d="M21 12a9 9 0 0 0-9-9" />
                   </svg>
                   Sending invitation...
-                } @else if (invitationSent()) {
-                  Invitation Sent
                 } @else {
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2">
@@ -412,22 +373,16 @@ interface InviteForm {
 })
 export class SettingsComponent {
   private readonly invitationService = inject(InvitationService);
+  private readonly toast = inject(Toast);
 
   readonly inviteOpen = signal(false);
-  readonly notice = signal('');
-  readonly noticeType = signal<NoticeType>('warning');
-
   readonly sending = signal(false);
-  readonly invitationSent = signal(false);
 
   form: InviteForm = this.emptyForm();
 
   openInvite(): void {
     this.form = this.emptyForm();
-    this.notice.set('');
-    this.noticeType.set('warning');
     this.sending.set(false);
-    this.invitationSent.set(false);
     this.inviteOpen.set(true);
   }
 
@@ -437,11 +392,10 @@ export class SettingsComponent {
     }
 
     this.inviteOpen.set(false);
-    this.notice.set('');
   }
 
   async prepareInvitation(): Promise<void> {
-    if (this.sending() || this.invitationSent()) {
+    if (this.sending()) {
       return;
     }
 
@@ -449,20 +403,16 @@ export class SettingsComponent {
     const email = this.form.email.trim().toLowerCase();
 
     if (!fullName || !email) {
-      this.showNotice(
-        'Please enter the full name and email address.',
-        'warning',
-      );
+      this.toast.warning('Please enter the full name and email address.');
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.showNotice('Please enter a valid email address.', 'warning');
+      this.toast.warning('Please enter a valid email address.');
       return;
     }
 
     this.sending.set(true);
-    this.notice.set('');
 
     try {
       const message = await this.invitationService.inviteUser({
@@ -471,27 +421,23 @@ export class SettingsComponent {
         role: this.form.role.toLowerCase() as InvitationRole,
       });
 
-      this.invitationSent.set(true);
-
-      this.showNotice(
+      this.toast.success(
         `${message} Check the recipient's inbox and spam folder.`,
-        'success',
+        'Invitation Sent',
       );
+
+      this.sending.set(false);
+      this.closeInvite();
     } catch (error: unknown) {
-      this.showNotice(
+      this.toast.error(
         error instanceof Error
           ? error.message
           : 'Invitation could not be sent. Please try again.',
-        'error',
+        'Invitation Failed',
       );
     } finally {
       this.sending.set(false);
     }
-  }
-
-  private showNotice(message: string, type: NoticeType): void {
-    this.notice.set(message);
-    this.noticeType.set(type);
   }
 
   private emptyForm(): InviteForm {

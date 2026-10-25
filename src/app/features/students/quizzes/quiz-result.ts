@@ -17,7 +17,8 @@ interface Piece {
   spin: number;
 }
 
-const COLORS = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#a855f7', '#ec4899', '#facc15'];
+/* App theme palette: blues + one warm accent */
+const COLORS = ['#1d4ed8', '#3b82f6', '#93c5fd', '#dbeafe', '#f59e0b', '#16a34a', '#ffffff'];
 const CELEBRATION_MS = 7000;
 
 @Component({
@@ -50,16 +51,24 @@ const CELEBRATION_MS = 7000;
         }
 
         <div class="celebrate-card">
-          <svg class="trophy" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <path d="M20 8h24v16a12 12 0 0 1-24 0V8z" fill="#fbbf24" stroke="#b45309" stroke-width="2"/>
-            <path d="M20 12H10c0 10 4 16 12 17M44 12h10c0 10-4 16-12 17" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M32 36v8M22 56h20M26 44h12v12H26z" stroke="#b45309" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="#fcd34d"/>
-          </svg>
+          <div class="trophy-wrap">
+            <svg class="trophy" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <path d="M20 8h24v16a12 12 0 0 1-24 0V8z" fill="#fbbf24" stroke="#b45309" stroke-width="2"/>
+              <path d="M20 12H10c0 10 4 16 12 17M44 12h10c0 10-4 16-12 17" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M32 36v8M22 56h20M26 44h12v12H26z" stroke="#b45309" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="#fcd34d"/>
+            </svg>
+          </div>
+
+          <span class="kicker">Top performer</span>
           <h1>Congratulations!</h1>
           <p class="lead">You scored the highest marks in this quiz.</p>
-          <div class="big-score">{{ attempt()?.score ?? 0 }}<small>/{{ attempt()?.total_marks ?? 0 }}</small></div>
+
+          <div class="big-score">
+            {{ attempt()?.score ?? 0 }}<small>/{{ attempt()?.total_marks ?? 0 }}</small>
+          </div>
           <p class="sub">{{ attempt()?.quizzes?.title }}</p>
-          <button type="button" class="btn light" (click)="showResult()">See my result</button>
+
+          <button type="button" class="btn primary wide" (click)="showResult()">See my result</button>
         </div>
       </div>
     }
@@ -69,7 +78,7 @@ const CELEBRATION_MS = 7000;
         <div class="wrap">
           <div class="panel result">
             <span class="kicker">Quiz result</span>
-            <h1>{{ a.quizzes?.title }}</h1>
+            <h1 class="title">{{ a.quizzes?.title }}</h1>
 
             <div class="ring" [class.pass]="a.passed" [class.fail]="!a.passed" [style.--p]="pct() + '%'">
               <div class="ring-inner">
@@ -105,58 +114,102 @@ const CELEBRATION_MS = 7000;
   `,
   styles: [`
     :host { display: block; }
+
     .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
-    .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 2px 4px rgb(15 23 42 / 4%); }
+    .panel {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px;
+      box-shadow: 0 2px 4px rgb(15 23 42 / 4%);
+    }
     .panel.center { max-width: 480px; margin: 48px auto; text-align: center; color: #475569; }
     .panel.result { text-align: center; padding: 32px 24px; }
-    .kicker { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #1d4ed8; }
-    h1 { margin: 6px 0 20px; font-size: 22px; font-weight: 900; color: #020617; }
+
+    .kicker {
+      font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: #1d4ed8;
+    }
+    .title { margin: 6px 0 20px; font-size: 22px; font-weight: 900; color: #020617; }
     .muted { color: #64748b; font-size: 13px; }
+
+    /* Score ring */
     .ring {
       --p: 0%; width: 170px; height: 170px; margin: 0 auto 16px; border-radius: 50%;
-      background: conic-gradient(var(--c, #1d4ed8) var(--p), #e2e8f0 0); display: grid; place-items: center;
-      animation: grow .9s ease-out;
+      background: conic-gradient(var(--c, #1d4ed8) var(--p), #e2e8f0 0);
+      display: grid; place-items: center; animation: grow .9s ease-out;
     }
     .ring.pass { --c: #16a34a; }
     .ring.fail { --c: #dc2626; }
-    .ring-inner { width: 138px; height: 138px; border-radius: 50%; background: #fff; display: grid; place-content: center; }
+    .ring-inner {
+      width: 138px; height: 138px; border-radius: 50%; background: #fff;
+      display: grid; place-content: center;
+    }
     .ring-inner strong { font-size: 34px; font-weight: 900; color: #0f172a; line-height: 1; }
     .ring-inner span { font-size: 12px; color: #64748b; margin-top: 4px; }
     @keyframes grow { from { transform: scale(.85); opacity: 0; } }
+
     .verdict { display: inline-block; padding: 7px 18px; border-radius: 999px; font-weight: 800; font-size: 13px; }
     .verdict.pass { background: #dcfce7; color: #15803d; }
     .verdict.fail { background: #fee2e2; color: #b91c1c; }
-    .top-note { margin: 14px 0 0; font-weight: 800; color: #b45309; }
+    .top-note { margin: 14px 0 0; font-weight: 800; color: #b45309; font-size: 13px; }
+
     .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 24px 0; }
     .facts div { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 6px; }
     .facts strong { display: block; font-size: 18px; color: #0f172a; }
     .facts span { font-size: 10.5px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
-    .btn { border: 0; border-radius: 11px; padding: 11px 22px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+
+    /* Buttons */
+    .btn {
+      border: 0; border-radius: 11px; padding: 11px 22px; font: inherit;
+      font-size: 13px; font-weight: 800; cursor: pointer; transition: background .2s ease, transform .15s ease;
+    }
     .btn.primary { background: #1d4ed8; color: #fff; }
     .btn.primary:hover { background: #1e40af; }
-    .btn.light { background: #fff; color: #7c2d12; margin-top: 22px; padding: 12px 26px; }
-    .spinner { display: inline-block; width: 16px; height: 16px; margin-right: 8px; border: 2px solid #cbd5e1; border-top-color: #1d4ed8; border-radius: 50%; vertical-align: -3px; animation: spin .8s linear infinite; }
+    .btn.primary:active { transform: scale(.98); }
+    .btn.wide { margin-top: 24px; padding: 12px 28px; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px; margin-right: 8px;
+      border: 2px solid #cbd5e1; border-top-color: #1d4ed8; border-radius: 50%;
+      vertical-align: -3px; animation: spin .8s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Full-screen celebration */
     .celebrate {
-      position: fixed; inset: 0; z-index: 100; overflow: hidden; display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(circle at 50% 35%, #7c3aed 0%, #4c1d95 45%, #1e1b4b 100%);
+      position: fixed; inset: 0; z-index: 100; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      background: radial-gradient(circle at 50% 30%, #2563eb 0%, #1e3a8a 45%, #0f172a 100%);
       animation: fade .4s ease-out;
     }
     @keyframes fade { from { opacity: 0; } }
-    .celebrate-card { position: relative; z-index: 2; text-align: center; color: #fff; padding: 24px; animation: pop .7s cubic-bezier(.2,1.4,.4,1) both; }
-    @keyframes pop { from { transform: scale(.4); opacity: 0; } }
-    .trophy { width: 120px; height: 120px; filter: drop-shadow(0 8px 24px rgb(251 191 36 / 55%)); animation: bounce 1.6s ease-in-out infinite; }
-    @keyframes bounce { 50% { transform: translateY(-14px) rotate(-3deg); } }
-    .celebrate-card h1 {
-      margin: 12px 0 6px; font-size: clamp(34px, 7vw, 64px); font-weight: 900; color: #fff;
-      text-shadow: 0 4px 24px rgb(0 0 0 / 35%);
+
+    .celebrate-card {
+      position: relative; z-index: 2; width: 100%; max-width: 440px; text-align: center;
+      background: #fff; border-radius: 20px; padding: 32px 28px 28px;
+      box-shadow: 0 24px 60px rgb(2 6 23 / 45%);
+      animation: pop .6s cubic-bezier(.2,1.2,.4,1) both;
     }
-    .lead { margin: 0; font-size: clamp(15px, 2.6vw, 20px); color: #e9d5ff; font-weight: 600; }
-    .big-score { margin-top: 18px; font-size: clamp(48px, 9vw, 84px); font-weight: 900; color: #fde68a; line-height: 1; }
-    .big-score small { font-size: .4em; color: #ddd6fe; }
-    .sub { margin: 10px 0 0; color: #c4b5fd; font-size: 14px; }
+    @keyframes pop { from { transform: scale(.85) translateY(16px); opacity: 0; } }
+
+    .trophy-wrap {
+      width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%;
+      background: #fffbeb; border: 1px solid #fde68a; display: grid; place-items: center;
+    }
+    .trophy { width: 60px; height: 60px; animation: bounce 1.8s ease-in-out infinite; }
+    @keyframes bounce { 50% { transform: translateY(-5px); } }
+
+    .celebrate-card h1 {
+      margin: 8px 0 6px; font-size: clamp(26px, 6vw, 34px); font-weight: 900; color: #020617;
+    }
+    .lead { margin: 0; font-size: 14px; color: #475569; font-weight: 600; }
+
+    .big-score {
+      margin: 20px auto 0; display: inline-block; padding: 10px 26px; border-radius: 14px;
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      font-size: clamp(40px, 9vw, 56px); font-weight: 900; color: #1d4ed8; line-height: 1.1;
+    }
+    .big-score small { font-size: .42em; color: #64748b; font-weight: 800; }
+    .sub { margin: 12px 0 0; color: #64748b; font-size: 13px; font-weight: 700; }
+
     .confetti {
       position: absolute; top: -20px; border-radius: 2px; opacity: 0; z-index: 1;
       animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite;
@@ -165,6 +218,7 @@ const CELEBRATION_MS = 7000;
       0% { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
       100% { transform: translateY(110vh) rotate(var(--spin, 540deg)); opacity: .9; }
     }
+
     @media (prefers-reduced-motion: reduce) {
       .confetti, .trophy, .ring, .celebrate, .celebrate-card { animation: none; }
       .confetti { display: none; }
@@ -185,7 +239,7 @@ export class QuizResult implements OnInit, OnDestroy {
   readonly isHighest = signal(false);
   readonly celebrating = signal(false);
 
-  readonly pieces: Piece[] = Array.from({ length: 80 }, () => ({
+  readonly pieces: Piece[] = Array.from({ length: 70 }, () => ({
     left: Math.random() * 100,
     delay: Math.random() * 3,
     duration: 3.5 + Math.random() * 3,

@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 
-export type UserRole = 'admin' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'student';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -55,6 +55,10 @@ export class AuthService {
 
   async isAdmin(userId: string): Promise<boolean> {
     return (await this.getRole(userId)) === 'admin';
+  }
+
+  async isTeacher(userId: string): Promise<boolean> {
+    return (await this.getRole(userId)) === 'teacher';
   }
 
   async isStudent(userId: string): Promise<boolean> {
