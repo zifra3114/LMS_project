@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { VIDEO_SERVER_URL } from '../config/video-server';
 
 export type LectureStatus = 'Published' | 'Drafted';
 export type ProcessingStatus = 'Pending' | 'Uploading' | 'Processing' | 'Ready' | 'Failed';
@@ -15,6 +14,7 @@ export interface Lecture {
   processing_status: ProcessingStatus;
   processing_progress: number;
   processing_error: string | null;
+  /** Ab ye video ka Supabase Storage path hai. */
   playlist_path: string | null;
   created_at: string;
   course_batches?: {
@@ -24,7 +24,6 @@ export interface Lecture {
   } | null;
 }
 
-/** Admin form ki cheezein. Duration aur video ki halat server khud bharta hai. */
 export type LectureInput = Pick<Lecture, 'batch_id' | 'title' | 'description' | 'status'>;
 
 export interface UploadProgress {
@@ -32,17 +31,22 @@ export interface UploadProgress {
   total: number;
 }
 
-const SELECT_WITH_BATCH =
-  '*, course_batches(batch_name, batch_code, courses(title))';
+const SELECT_WITH_BATCH = '*, course_batches(batch_name, batch_code, courses(title))';
 
-const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.mov', '.mkv', '.webm', '.avi'];
+const BUCKET = 'lecture-videos';
+const MAX_VIDEO_MB = 50; // SQL mein bucket limit bhi yehi hai
+const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
+const SIGNED_URL_SECONDS = 12 * 60 * 60;
+const CONTENT_TYPES: Record<string, string> = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.webm': 'video/webm',
+};
 
-/** Video 8 MB ke tukron mein jati hai, beech mein net toot jaye to wahin se jaari hoti hai. */
-const CHUNK_SIZE = 8 * 1024 * 1024;
-const MAX_ATTEMPTS = 4;
-
-/** Server ne saaf wajah ke saath mana kar diya, dobara koshish ka faida nahi. */
-class UploadRejected extends Error {}
+const extensionOf = (name: string): string => {
+  const i = name.lastIndexOf('.');
+  return i < 0 ? '' : name.slice(i).toLowerCase();
+};
 
 export function formatDuration(minutes: number): string {
   if (!minutes) return '—';
@@ -58,15 +62,13 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 @Injectable({
   providedIn: 'root',
 })
 export class LectureService {
   private readonly supabase = inject(SupabaseService).client;
 
-  // ---------- Admin: lecture ki detail (Supabase) ----------
+  // ---------- Admin: lecture ki detail ----------
 
   async getAll(): Promise<Lecture[]> {
     const { data, error } = await this.supabase
@@ -108,18 +110,20 @@ export class LectureService {
     return data as Lecture;
   }
 
-  /** Pehle server se video ki files mitati hai, phir row. Server band ho to bhi row delete ho jati hai. */
+  /** Pehle storage se video mitati hai, phir row. */
   async delete(id: number): Promise<{ filesRemoved: boolean }> {
     let filesRemoved = true;
 
-    try {
-      await this.api<void>(`/api/lectures/${id}/video`, { method: 'DELETE' });
-    } catch {
-      filesRemoved = false;
-    }
+    const { data: row } = await this.supabase
+      .from('lectures')
+      .select('playlist_path')
+      .eq('id', id)
+      .maybeSingle();
+
+    const path = (row as { playlist_path: string | null } | null)?.playlist_path;
+    if (path) filesRemoved = await this.removeFiles([path]);
 
     const { error } = await this.supabase.from('lectures').delete().eq('id', id);
-
     if (error) throw error;
 
     return { filesRemoved };
@@ -127,7 +131,6 @@ export class LectureService {
 
   // ---------- Student ----------
 
-  /** Login student ka batch: students.user_id = login ki id, students.batch_id = batch. */
   private async getMyBatchIds(): Promise<number[]> {
     const { data: auth, error: authError } = await this.supabase.auth.getUser();
 
@@ -136,88 +139,76 @@ export class LectureService {
 
     const { data, error } = await this.supabase
       .from('students')
-      .select('*')
+      .select('batch_id')
       .eq('user_id', auth.user.id);
 
     if (error) throw error;
 
-    const batchIds: number[] = [];
-    for (const row of data ?? []) {
-      // Different possible field names for batch ID
-      const batchId = row['batch_id'] ?? row['course_batch_id'] ?? row['batchId'];
-      if (batchId && !isNaN(Number(batchId))) {
-        batchIds.push(Number(batchId));
-      }
-    }
-
-    return batchIds;
+    return (data ?? [])
+      .map((row) => Number((row as { batch_id: number | null }).batch_id))
+      .filter((id) => id > 0);
   }
 
-  /** Sirf Published aur tayyar lectures, sirf student ke apne batches ki. */
+  /** Student ke apne batches ki Published lectures. */
   async getForMyBatches(): Promise<Lecture[]> {
     const batchIds = await this.getMyBatchIds();
-
     if (batchIds.length === 0) return [];
 
-    // For development: show all Published lectures, even if not Ready
-    // Remove .eq('processing_status', 'Ready') to see pending videos
-    const queries = [
-      this.supabase
-        .from('lectures')
-        .select(SELECT_WITH_BATCH)
-        .in('batch_id', batchIds)
-        .eq('status', 'Published')
-        // .eq('processing_status', 'Ready')  // Comment out for testing
-        .order('created_at', { ascending: false }),
-      this.supabase
-        .from('lectures')
-        .select(SELECT_WITH_BATCH)
-        .in('course_batch_id', batchIds)
-        .eq('status', 'Published')
-        // .eq('processing_status', 'Ready')  // Comment out for testing
-        .order('created_at', { ascending: false })
-    ];
+    const { data, error } = await this.supabase
+      .from('lectures')
+      .select(SELECT_WITH_BATCH)
+      .in('batch_id', batchIds)
+      .eq('status', 'Published')
+      .order('created_at', { ascending: false });
 
-    // Try both queries and return whichever works
-    for (const query of queries) {
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        return data as unknown as Lecture[];
-      }
-    }
+    if (error) throw error;
 
-    // If both failed, return empty array
-    return [];
+    return (data ?? []) as unknown as Lecture[];
   }
 
-  // ---------- Video server ----------
+  // ---------- Video ----------
 
-  /** Server se is lecture ka dekhne wala link (chhote token ke saath) leta hai. */
+  /** Video ka dekhne wala link (12 ghante chalta hai). */
   async getPlaybackUrl(lectureId: number): Promise<string> {
-    const result = await this.api<{ playlistPath: string }>(
-      `/api/lectures/${lectureId}/playback`,
-      { method: 'POST' },
-    );
+    const { data: row, error } = await this.supabase
+      .from('lectures')
+      .select('playlist_path')
+      .eq('id', lectureId)
+      .maybeSingle();
 
-    return `${VIDEO_SERVER_URL}${result.playlistPath}`;
+    if (error) throw error;
+
+    const path = (row as { playlist_path: string | null } | null)?.playlist_path;
+    if (!path) throw new Error('This video is not available yet.');
+
+    const { data, error: signError } = await this.supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(path, SIGNED_URL_SECONDS);
+
+    if (signError || !data?.signedUrl) {
+      throw new Error('You do not have access to this video, or it has been removed.');
+    }
+
+    return data.signedUrl;
   }
 
   validateFile(file: File): void {
-    const name = file.name.toLowerCase();
-
-    if (!VIDEO_EXTENSIONS.some((ext) => name.endsWith(ext))) {
-      throw new Error('Unsupported file type. Please choose an MP4, M4V, MOV, MKV, WEBM or AVI video.');
+    if (!CONTENT_TYPES[extensionOf(file.name)]) {
+      throw new Error('Unsupported file type. Please choose an MP4 (H.264) or WebM video.');
     }
 
     if (file.size === 0) {
       throw new Error('The selected file is empty.');
     }
+
+    if (file.size > MAX_VIDEO_BYTES) {
+      throw new Error(
+        `This video is ${formatBytes(file.size)}. The maximum allowed size is ${MAX_VIDEO_MB} MB.`,
+      );
+    }
   }
 
-  /**
-   * Badi video upload. Pehle server se poochta hai kitna aa chuka hai, phir wahin se aage bhejta hai.
-   * Isliye upload adhoora reh jaye to wahi file dobara chun kar jaari ki ja sakti hai.
-   */
+  /** Video seedha Supabase Storage mein upload hoti hai, phir lecture "Ready" ho jati hai. */
   async uploadVideo(
     lectureId: number,
     file: File,
@@ -225,121 +216,123 @@ export class LectureService {
     signal?: AbortSignal,
   ): Promise<void> {
     this.validateFile(file);
+    onProgress({ sent: 0, total: file.size });
 
-    const state = await this.api<{
-      received: number;
-      total: number | null;
-      filename: string | null;
-    }>(`/api/lectures/${lectureId}/upload`);
+    const { data: existing } = await this.supabase
+      .from('lectures')
+      .select('processing_status, playlist_path')
+      .eq('id', lectureId)
+      .maybeSingle();
 
-    let offset =
-      state.total === file.size && state.filename === file.name && state.received <= file.size
-        ? state.received
-        : 0;
+    const current = existing as { processing_status: string; playlist_path: string | null } | null;
+    const wasReady = current?.processing_status === 'Ready';
+    const oldPath = current?.playlist_path ?? null;
 
-    onProgress({ sent: offset, total: file.size });
+    if (!wasReady) await this.setUploadState(lectureId, 'Uploading');
 
-    while (offset < file.size) {
-      offset = await this.sendChunk(lectureId, file, offset, signal);
+    const seconds = await this.readDuration(file);
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_');
+    const path = `${lectureId}/${Date.now()}-${safeName}`;
 
-      if (offset > file.size) throw new Error('The server reported an unexpected size. Please upload the file again.');
+    const upload = this.supabase.storage.from(BUCKET).upload(path, file, {
+      contentType: CONTENT_TYPES[extensionOf(file.name)],
+      cacheControl: '3600',
+      upsert: false,
+    });
 
-      onProgress({ sent: offset, total: file.size });
-    }
-
-    await this.api(`/api/lectures/${lectureId}/upload/complete`, { method: 'POST' });
-  }
-
-  private async sendChunk(
-    lectureId: number,
-    file: File,
-    offset: number,
-    signal?: AbortSignal,
-  ): Promise<number> {
-    const end = Math.min(offset + CHUNK_SIZE, file.size);
-    const url =
-      `${VIDEO_SERVER_URL}/api/lectures/${lectureId}/upload` +
-      `?offset=${offset}&total=${file.size}&filename=${encodeURIComponent(file.name)}`;
-
-    let lastError: unknown;
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            ...(await this.authHeaders()),
-            'Content-Type': 'application/octet-stream',
+    let result;
+    try {
+      result = await this.raceAbort(upload, signal);
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') {
+        // Upload peeche chalta rahe to bhi adhoori file mita do
+        void upload.then(
+          (r) => {
+            if (!r.error) void this.removeFiles([path]);
           },
-          body: file.slice(offset, end),
-          signal,
-        });
-
-        const body = await response.json().catch(() => ({}) as Record<string, unknown>);
-
-        if (response.ok) return body['received'] as number;
-
-        // Server ke paas jitna hai wahin se aage barho
-        if (response.status === 409 && typeof body['received'] === 'number') {
-          return body['received'];
-        }
-
-        const message = (body['error'] as string) || `Upload failed (${response.status}).`;
-
-        if (response.status < 500) throw new UploadRejected(message);
-
-        lastError = new Error(message);
-      } catch (error) {
-        if (error instanceof UploadRejected || (error as Error).name === 'AbortError') throw error;
-
-        lastError = error;
+          () => undefined,
+        );
+        if (!wasReady) await this.setUploadState(lectureId, 'Pending');
       }
-
-      if (attempt < MAX_ATTEMPTS) await wait(1000 * 2 ** (attempt - 1));
+      throw e;
     }
 
-    throw this.friendly(lastError);
+    if (result.error) {
+      const message = result.error.message || 'The upload failed. Please try again.';
+      if (!wasReady) await this.setUploadState(lectureId, 'Failed', message);
+      throw new Error(message);
+    }
+
+    const patch: Record<string, unknown> = {
+      processing_status: 'Ready',
+      processing_progress: 100,
+      processing_error: null,
+      playlist_path: path,
+    };
+    if (seconds > 0) patch['duration_minutes'] = Math.max(1, Math.round(seconds / 60));
+
+    const { error } = await this.supabase.from('lectures').update(patch).eq('id', lectureId);
+    if (error) throw error;
+
+    // Video badli ho to purani file hata do
+    if (oldPath && oldPath !== path) void this.removeFiles([oldPath]);
+
+    onProgress({ sent: file.size, total: file.size });
   }
 
   // ---------- Helpers ----------
 
-  private async authHeaders(): Promise<Record<string, string>> {
-    // Har baar naya token (lambi upload mein purana expire ho sakta hai, Supabase khud refresh karta hai)
-    const { data, error } = await this.supabase.auth.getSession();
-
-    if (error || !data.session) throw new Error('Your session has expired. Please sign in again.');
-
-    return { Authorization: `Bearer ${data.session.access_token}` };
+  private async setUploadState(
+    id: number,
+    status: ProcessingStatus,
+    message: string | null = null,
+  ): Promise<void> {
+    await this.supabase
+      .from('lectures')
+      .update({ processing_status: status, processing_progress: 0, processing_error: message })
+      .eq('id', id);
   }
 
-  private async api<T>(path: string, init: RequestInit = {}): Promise<T> {
-    let response: Response;
-
+  private async removeFiles(paths: string[]): Promise<boolean> {
     try {
-      response = await fetch(`${VIDEO_SERVER_URL}${path}`, {
-        ...init,
-        headers: { ...(await this.authHeaders()), ...(init.headers ?? {}) },
-      });
-    } catch (error) {
-      throw this.friendly(error);
+      const { error } = await this.supabase.storage.from(BUCKET).remove(paths);
+      return !error;
+    } catch {
+      return false;
     }
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}) as Record<string, unknown>);
-      throw new Error((body['error'] as string) || `The video server returned an error (${response.status}).`);
-    }
-
-    if (response.status === 204) return undefined as T;
-
-    return (await response.json()) as T;
   }
 
-  private friendly(error: unknown): Error {
-    if (error instanceof TypeError) {
-      return new Error('Unable to reach the video server. Please make sure it is running and try again.');
-    }
+  private raceAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return promise;
 
-    return error instanceof Error ? error : new Error('Something went wrong. Please try again.');
+    return new Promise<T>((resolve, reject) => {
+      const abort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+
+      if (signal.aborted) return abort();
+
+      signal.addEventListener('abort', abort, { once: true });
+      promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    });
+  }
+
+  /** Browser se video ka length (seconds). Na mile to 0. */
+  private readDuration(file: File): Promise<number> {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const video = document.createElement('video');
+
+      const done = (value: number) => {
+        URL.revokeObjectURL(url);
+        video.removeAttribute('src');
+        video.load();
+        resolve(value);
+      };
+
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => done(Number.isFinite(video.duration) ? video.duration : 0);
+      video.onerror = () => done(0);
+      video.src = url;
+    });
   }
 
   private validate(input: LectureInput): void {
