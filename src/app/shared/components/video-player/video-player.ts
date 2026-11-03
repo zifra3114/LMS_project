@@ -10,17 +10,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import Hls from 'hls.js';
-import type { ErrorData } from 'hls.js';
 import { LectureService } from '../../../core/services/lecture.service';
 
 const POSITION_KEY = 'lms-lecture-position:';
-const MAX_MEDIA_RECOVERIES = 3;
 const HIDE_CONTROLS_AFTER_MS = 2800;
 
 /**
- * Apna video player (YouTube ka koi logo nahi). Server se chhota token leta hai,
- * phir hls.js se video chalata hai. Dobara kholne par wahin se shuru hoti hai jahan chhodi thi.
+ * Apna video player (YouTube ka koi logo nahi). Lecture ka dekhne wala link leta hai
+ * aur normal MP4 / WebM chalata hai. Dobara kholne par wahin se shuru hoti hai jahan chhodi thi.
  *
  * Controls: play/pause, seek bar, 10 sec aage/peeche, volume, speed, fullscreen.
  * Keyboard: Space/K, ←/→ (5s), J/L (10s), ↑/↓ (volume), M (mute), F (fullscreen).
@@ -574,9 +571,6 @@ export class VideoPlayerComponent implements OnInit, OnDestroy {
   readonly bufferedPct = computed(() => this.toPct(this.bufferedEnd(), this.duration()));
   readonly volumePct = computed(() => `${Math.round((this.muted() ? 0 : this.volume()) * 100)}%`);
 
-  private hls?: Hls;
-  private tokenRetried = false;
-  private mediaRecoveries = 0;
   private lastSavedAt = 0;
   private hideTimer?: ReturnType<typeof setTimeout>;
 
@@ -618,14 +612,11 @@ export class VideoPlayerComponent implements OnInit, OnDestroy {
     video.removeEventListener('timeupdate', this.onTimeUpdate);
     video.removeEventListener('ended', this.onEnded);
 
-    this.destroyHls();
     video.removeAttribute('src');
     video.load();
   }
 
   retry(): void {
-    this.tokenRetried = false;
-    this.mediaRecoveries = 0;
     void this.start();
   }
 
@@ -850,85 +841,47 @@ export class VideoPlayerComponent implements OnInit, OnDestroy {
     return `${Math.min(Math.max((value / total) * 100, 0), 100)}%`;
   }
 
-  // ---------- HLS loading ----------
+  // ---------- Video loading ----------
 
   private async start(): Promise<void> {
-    this.destroyHls();
     this.loading.set(true);
     this.error.set(null);
 
+    const video = this.videoRef.nativeElement;
+
     try {
       const url = await this.lectureService.getPlaybackUrl(this.lectureId);
-      const video = this.videoRef.nativeElement;
 
-      video.addEventListener('loadedmetadata', () => this.restorePosition(), { once: true });
+      video.addEventListener(
+        'loadedmetadata',
+        () => {
+          this.loading.set(false);
+          this.restorePosition();
+        },
+        { once: true },
+      );
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({ maxBufferLength: 60 });
-        this.hls = hls;
+      video.addEventListener(
+        'error',
+        () => {
+          if (video.getAttribute('src')) {
+            this.fail('The video could not be played. Please make sure it is an MP4 (H.264) or WebM file.');
+          }
+        },
+        { once: true },
+      );
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => this.loading.set(false));
-        hls.on(Hls.Events.FRAG_LOADED, () => {
-          this.tokenRetried = false;
-        });
-        hls.on(Hls.Events.ERROR, (_event, data) => this.onHlsError(data));
-
-        hls.loadSource(url);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari / iPhone: apna HLS player
-        video.src = url;
-        this.loading.set(false);
-      } else {
-        this.fail('Your browser cannot play this video. Please use Chrome, Edge, Firefox or Safari.');
-      }
+      video.src = url;
+      video.load();
     } catch (error) {
       this.fail((error as Error).message || 'Unable to load the video.');
     }
   }
 
-  private onHlsError(data: ErrorData): void {
-    if (!data.fatal) return;
-
-    const code = data.response?.code;
-
-    // Token expire ho gaya (bohat lambi baithak): naya token le kar wahin se dobara
-    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && (code === 401 || code === 403)) {
-      if (!this.tokenRetried) {
-        this.tokenRetried = true;
-        this.savePosition();
-        void this.start();
-        return;
-      }
-
-      this.fail('You do not have access to this video, or your session has expired. Please sign in again.');
-      return;
-    }
-
-    if (data.type === Hls.ErrorTypes.MEDIA_ERROR && this.mediaRecoveries < MAX_MEDIA_RECOVERIES) {
-      this.mediaRecoveries++;
-      this.hls?.recoverMediaError();
-      return;
-    }
-
-    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-      this.fail('The connection to the video server was lost. Check your internet connection and try again.');
-      return;
-    }
-
-    this.fail('The video could not be played.');
-  }
-
   private fail(message: string): void {
-    this.destroyHls();
     this.loading.set(false);
     this.buffering.set(false);
     this.error.set(message);
-  }
-
-  private destroyHls(): void {
-    this.hls?.destroy();
-    this.hls = undefined;
   }
 
   // ---------- "Jahan chhoda wahin se" ----------
